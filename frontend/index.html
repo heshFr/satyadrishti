@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap"
+      rel="stylesheet"
+    />
+    <title>Satya Drishti — The Digital Curator</title>
+    <meta
+      name="description"
+      content="Satya Drishti: Real-time AI protection against voice cloning scams, deepfake video calls, and digital coercion."
+    />
+  </head>
+  <body>
+    <script>
+      // Apply saved theme + font size before React loads to prevent flash
+      (function() {
+        try {
+          var theme = JSON.parse(localStorage.getItem('satya-theme'));
+          var fontSize = JSON.parse(localStorage.getItem('satya-font-size'));
+          var root = document.documentElement;
+          if (theme === 'light') {
+            root.classList.remove('dark');
+            root.classList.add('light');
+          } else if (theme === 'system') {
+            var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            root.classList.toggle('dark', prefersDark);
+            root.classList.toggle('light', !prefersDark);
+          }
+          // else keep 'dark' class from HTML
+          if (fontSize && fontSize >= 12 && fontSize <= 20) {
+            root.style.fontSize = fontSize + 'px';
+          }
+        } catch(e) {}
+      })();
+    </script>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

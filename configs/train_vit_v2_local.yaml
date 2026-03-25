@@ -1,0 +1,110 @@
+# -----------------------------------------------------------
+# Satya Drishti -- ViT-B/16 V2 Training (Local RTX 3050 4GB)
+# ===========================================================
+# Optimized for overnight training on RTX 3050 Laptop GPU.
+# Compared to train_vit_v2.yaml:
+#   - batch_size: 16 -> 6 (fits in 4GB VRAM with AMP)
+#   - gradient_accumulation_steps: 4 -> 10 (effective batch ~60)
+#   - epochs: 40 -> 25 (with early stopping patience 5)
+#   - freeze_blocks: 3 -> 4 (less VRAM, still fine-tunes deeply)
+# -----------------------------------------------------------
+
+model:
+  name: "ViT-B/16"
+  pretrained_dir: "models/image_forensics/pretrained_vit"
+  num_classes: 2 # real vs fake
+  input_size: 224
+  freeze_blocks: 4 # freeze 4/12 blocks -- saves VRAM while still fine-tuning deeply
+
+training:
+  batch_size: 32 # GPU was at 20% with batch=6, push to 32 with AMP
+  gradient_accumulation_steps: 2 # effective batch = 32 * 2 = 64
+  epochs: 25
+  learning_rate: 0.00003 # 3e-5
+  weight_decay: 0.01
+  optimizer: "adamw"
+  scheduler: "cosine_annealing"
+  warmup_epochs: 2
+  use_amp: true
+  gradient_clip: 1.0
+  label_smoothing: 0.1
+  early_stopping_patience: 5
+  num_workers: 4 # parallel data loading — 4 workers to keep GPU fed
+  prefetch_factor: 8 # prefetch 8 batches per worker while GPU works
+  torch_compile: false # Triton not available on Windows
+
+data:
+  parquet_pattern: "D:/openfake datasets/train-*.parquet"
+  max_samples: null # use everything
+  train_split: 0.85
+  val_split: 0.08
+  test_split: 0.07
+
+  augmentation:
+    horizontal_flip: true
+    color_jitter:
+      brightness: 0.3
+      contrast: 0.3
+      saturation: 0.3
+      hue: 0.05
+    random_resized_crop:
+      scale: [0.6, 1.0]
+
+    # Platform compression simulations
+    whatsapp_simulation:
+      enabled: true
+      probability: 0.20
+      max_dim: 1600
+      quality_range: [60, 80]
+
+    instagram_simulation:
+      enabled: true
+      probability: 0.10
+      max_dim: 1080
+      quality_range: [65, 78]
+
+    facebook_simulation:
+      enabled: true
+      probability: 0.10
+      max_dim: 2048
+      quality_range: [71, 85]
+
+    telegram_simulation:
+      enabled: true
+      probability: 0.08
+      max_dim: 2560
+      quality_range: [72, 87]
+
+    twitter_simulation:
+      enabled: true
+      probability: 0.07
+      max_dim: 4096
+      quality_range: [80, 90]
+
+    jpeg_compression:
+      enabled: true
+      quality_range: [15, 95]
+      probability: 0.40
+
+    downscale_upscale:
+      enabled: true
+      probability: 0.15
+      min_scale: 0.3
+      max_scale: 0.7
+
+    gaussian_blur:
+      enabled: true
+      probability: 0.15
+      kernel_size: 5
+
+    random_erasing:
+      enabled: true
+      probability: 0.1
+
+    random_grayscale:
+      enabled: true
+      probability: 0.05
+
+output:
+  checkpoint_dir: "models/image_forensics"
+  best_model_name: "deepfake_vit_b16.pt"

@@ -1,0 +1,120 @@
+# -----------------------------------------------------------
+# Satya Drishti -- ViT-B/16 V2 Training (Full Dataset)
+# ===========================================================
+# Major upgrade: trains on ALL available parquet shards with
+# aggressive compression augmentation for robustness against
+# WhatsApp, Instagram, Facebook, Twitter, Telegram processing.
+#
+# Dataset: 206 parquet shards containing modern AI images from
+# Midjourney 6/7, DALL-E 3, SDXL, Flux, GPT-Image-1, Imagen 4,
+# Chroma, Ideogram 3, and real photos.
+#
+# Key changes from v1:
+# - All shards (not just 1)
+# - Stronger compression augmentation (6 platform simulations)
+# - Downscale/upscale augmentation (simulates re-sharing)
+# - More training epochs with better early stopping
+# - Freeze only 4 blocks (deeper fine-tuning)
+# -----------------------------------------------------------
+
+model:
+  name: "ViT-B/16"
+  pretrained_dir: "models/image_forensics/pretrained_vit"
+  num_classes: 2 # real vs fake
+  input_size: 224
+  freeze_blocks: 3 # freeze only 3/12 blocks -- deeper fine-tuning for maximum accuracy
+
+training:
+  batch_size: 16 # push RTX 3050 with AMP FP16
+  gradient_accumulation_steps: 4 # effective batch = 16 * 4 = 64
+  epochs: 40
+  learning_rate: 0.00003 # 3e-5 (slightly higher LR for bigger effective batch)
+  weight_decay: 0.01
+  optimizer: "adamw"
+  scheduler: "cosine_annealing"
+  warmup_epochs: 3
+  use_amp: true
+  gradient_clip: 1.0
+  label_smoothing: 0.1
+  early_stopping_patience: 7
+
+data:
+  # ALL parquet shards
+  parquet_pattern: "D:/openfake datasets/train-*.parquet"
+  max_samples: null # use everything
+  train_split: 0.85
+  val_split: 0.08
+  test_split: 0.07
+
+  augmentation:
+    horizontal_flip: true
+    color_jitter:
+      brightness: 0.3
+      contrast: 0.3
+      saturation: 0.3
+      hue: 0.05
+    random_resized_crop:
+      scale: [0.6, 1.0]
+
+    # Platform compression simulations
+    # Each simulates a specific social media platform's processing
+    whatsapp_simulation:
+      enabled: true
+      probability: 0.20
+      max_dim: 1600
+      quality_range: [60, 80]
+
+    instagram_simulation:
+      enabled: true
+      probability: 0.10
+      max_dim: 1080
+      quality_range: [65, 78]
+
+    facebook_simulation:
+      enabled: true
+      probability: 0.10
+      max_dim: 2048
+      quality_range: [71, 85]
+
+    telegram_simulation:
+      enabled: true
+      probability: 0.08
+      max_dim: 2560
+      quality_range: [72, 87]
+
+    twitter_simulation:
+      enabled: true
+      probability: 0.07
+      max_dim: 4096
+      quality_range: [80, 90]
+
+    # General JPEG compression (catch-all)
+    jpeg_compression:
+      enabled: true
+      quality_range: [15, 95]
+      probability: 0.40
+
+    # Downscale-then-upscale (simulates re-sharing, screenshots of photos)
+    downscale_upscale:
+      enabled: true
+      probability: 0.15
+      min_scale: 0.3
+      max_scale: 0.7
+
+    gaussian_blur:
+      enabled: true
+      probability: 0.15
+      kernel_size: 5
+
+    random_erasing:
+      enabled: true
+      probability: 0.1
+
+    # Grayscale conversion (some shared images lose color)
+    random_grayscale:
+      enabled: true
+      probability: 0.05
+
+output:
+  checkpoint_dir: "models/image_forensics"
+  best_model_name: "deepfake_vit_b16.pt"

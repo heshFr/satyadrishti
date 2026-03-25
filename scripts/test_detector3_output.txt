@@ -1,0 +1,76 @@
+[ViT] ViT-B/16 loaded from models\image_forensics\pretrained_vit on cuda
+[ViT] Loading fine-tuned weights from models\image_forensics\deepfake_vit_b16.pt...
+[ViT] Fine-tuned weights loaded successfully.
+[Forensics] ViT-B/16 loaded with fine-tuned weights from models\image_forensics\deepfake_vit_b16.pt
+
+--- Output for d:/satyadrishti/images/generated-1772189656456.png ---
+Base predict(): 0.9460834860801697
+predict_tta(): 0.947675096988678
+{
+  "status": "success",
+  "method": "tta",
+  "num_augmentations": 5,
+  "avg_fake_probability": 0.9477,
+  "std_fake_probability": 0.0014,
+  "real_probability": 0.0523,
+  "fake_probability": 0.9477,
+  "confidence": 0.9477,
+  "per_augmentation": [
+    {
+      "augmentation": "original",
+      "fake_prob": 0.9461
+    },
+    {
+      "augmentation": "h_flip",
+      "fake_prob": 0.946
+    },
+    {
+      "augmentation": "crop_tl",
+      "fake_prob": 0.9489
+    },
+    {
+      "augmentation": "crop_tr",
+      "fake_prob": 0.9485
+    },
+    {
+      "augmentation": "crop_bl",
+      "fake_prob": 0.9489
+    }
+  ]
+}
+
+--- Output for d:/satyadrishti/images/generated-1772189669364.png ---
+Base predict(): 0.9362108111381531
+predict_tta(): 0.7853548377752304
+{
+  "status": "success",
+  "method": "tta",
+  "num_augmentations": 5,
+  "avg_fake_probability": 0.7854,
+  "std_fake_probability": 0.2983,
+  "real_probability": 0.2146,
+  "fake_probability": 0.7854,
+  "confidence": 0.7854,
+  "per_augmentation": [
+    {
+      "augmentation": "original",
+      "fake_prob": 0.9362
+    },
+    {
+      "augmentation": "h_flip",
+      "fake_prob": 0.9378
+    },
+    {
+      "augmentation": "crop_tl",
+      "fake_prob": 0.9244
+    },
+    {
+      "augmentation": "crop_tr",
+      "fake_prob": 0.1888
+    },
+    {
+      "augmentation": "crop_bl",
+      "fake_prob": 0.9396
+    }
+  ]
+}

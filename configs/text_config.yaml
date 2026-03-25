@@ -1,0 +1,37 @@
+# ─────────────────────────────────────────────
+# Satya Drishti — Text Engine (DeBERTaV3 + LoRA)
+# ─────────────────────────────────────────────
+
+model:
+  name: "microsoft/deberta-v3-base"
+  num_labels: 4 # safe, urgency, financial_coercion, combined_threat
+  max_length: 512
+
+lora:
+  r: 16
+  lora_alpha: 32
+  lora_dropout: 0.05
+  target_modules: ["query_proj", "value_proj", "key_proj"]
+  bias: "none"
+  task_type: "SEQ_CLS"
+
+training:
+  batch_size: 16
+  epochs: 10
+  learning_rate: 0.0002
+  weight_decay: 0.01
+  optimizer: "adamw"
+  scheduler: "linear"
+  warmup_ratio: 0.06
+  gradient_accumulation_steps: 4
+  fp16: true
+
+data:
+  synthetic_samples: 10000
+  categories:
+    - "safe_conversation"
+    - "urgency_manipulation"
+    - "financial_coercion"
+    - "emotional_blackmail"
+    - "authority_impersonation"
+    - "combined_scam"

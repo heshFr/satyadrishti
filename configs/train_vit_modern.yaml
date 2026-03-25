@@ -1,0 +1,70 @@
+# ─────────────────────────────────────────────
+# Satya Drishti — ViT-B/16 Retraining on Modern AI Images
+# Dataset: Parquet shards with modern diffusion model outputs
+# (Midjourney 6/7, DALL-E 3, SDXL, Flux, GPT-Image-1, Imagen 4, etc.)
+# ─────────────────────────────────────────────
+
+model:
+  name: "ViT-B/16"
+  pretrained_dir: "models/image_forensics/pretrained_vit"
+  num_classes: 2  # real vs fake
+  input_size: 224
+  freeze_blocks: 6      # freeze 6/12 blocks (less than before — deeper fine-tuning needed)
+
+training:
+  batch_size: 8          # fits in 4GB VRAM with AMP
+  epochs: 25
+  learning_rate: 0.00003 # 3e-5 (slightly higher since more blocks trainable)
+  weight_decay: 0.01
+  optimizer: "adamw"
+  scheduler: "cosine_annealing"
+  warmup_epochs: 2
+  use_amp: true
+  gradient_clip: 1.0
+  label_smoothing: 0.1
+  early_stopping_patience: 7
+
+data:
+  # Glob pattern for parquet shards — works with 1 or all 206 shards
+  parquet_pattern: "C:/Users/hetes/Downloads/train-*.parquet"
+  max_samples: null      # set to e.g. 50000 to limit dataset size
+  train_split: 0.80
+  val_split: 0.10
+  test_split: 0.10
+
+  augmentation:
+    horizontal_flip: true
+    color_jitter:
+      brightness: 0.3
+      contrast: 0.3
+      saturation: 0.3
+      hue: 0.05
+    random_resized_crop:
+      scale: [0.7, 1.0]
+
+    # Critical: WhatsApp/social media compression simulation
+    # This teaches the model to detect AI images THROUGH compression artifacts
+    whatsapp_simulation:
+      enabled: true
+      probability: 0.3       # 30% of images get WhatsApp-style processing
+      max_dim: 1600
+      quality_range: [60, 80]
+
+    # Additional JPEG compression (separate from WhatsApp)
+    jpeg_compression:
+      enabled: true
+      quality_range: [20, 95]
+      probability: 0.5       # 50% of images get random JPEG quality
+
+    gaussian_blur:
+      enabled: true
+      probability: 0.15
+      kernel_size: 5
+
+    random_erasing:
+      enabled: true
+      probability: 0.1
+
+output:
+  checkpoint_dir: "models/image_forensics"
+  best_model_name: "deepfake_vit_b16.pt"  # overwrites the old model

@@ -1,0 +1,14 @@
+[ViT] ViT-B/16 loaded from models\image_forensics\pretrained_vit on cuda
+[ViT] Loading fine-tuned weights from models\image_forensics\deepfake_vit_b16.pt...
+[ViT] Fine-tuned weights loaded successfully.
+[Forensics] ViT-B/16 loaded with fine-tuned weights from models\image_forensics\deepfake_vit_b16.pt
+d:/satyadrishti/images/generated-1772189656456.png: is_photo=False, score=0.10
+[Forensics] Analyzing: generated-1772189656456.png
+[Forensics] Image type: graphic/screenshot (score: 0.10)
+Verdict: ai-generated, Conf: 92.7
+
+d:/satyadrishti/images/generated-1772189669364.png: is_photo=False, score=0.00
+[Forensics] Analyzing: generated-1772189669364.png
+[Forensics] Image type: graphic/screenshot (score: 0.00)
+Verdict: ai-generated, Conf: 85.9
+

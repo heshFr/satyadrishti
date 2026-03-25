@@ -1,0 +1,69 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+
+# Build
+dist/
+build/
+
+# ML Models & Weights
+*.onnx
+*.onnx.data
+*.pt
+*.pth
+*.bin
+*.safetensors
+*.gguf
+*.tflite
+models/
+datasets/
+
+# Logs & Runtime
+*.log
+logs/
+*.db
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Caches
+.hf_cache/
+.pytest_cache/
+.ruff_cache/
+
+# Archives
+*.rar
+*.zip
+*.tar.gz
+
+# Node
+node_modules/
+.next/
+out/
+
+# Generated
+images/
+
+# Recordings (user voice data)
+recordings/
+
+# Design mockups
+stitch_satya_drishti/
+
+# Design files
+*.pen
+
+# IDE
+.vscode/
+.idea/
+
+# MCP
+.mcp.json
+
+# Claude Code local settings
+.claude/settings.local.json

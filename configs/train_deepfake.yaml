@@ -1,0 +1,54 @@
+# ─────────────────────────────────────────────
+# Satya Drishti — Deepfake Detector Training
+# EfficientNet-B4 on FaceForensics++ / DFDC
+# ─────────────────────────────────────────────
+
+model:
+  name: "EfficientNet-B4"
+  pretrained: true
+  num_classes: 2  # real vs fake
+  input_size: 380
+  dropout: 0.4
+
+training:
+  batch_size: 8          # fits in 4GB VRAM with AMP
+  epochs: 30
+  learning_rate: 0.0001  # 1e-4
+  weight_decay: 0.00001
+  optimizer: "adamw"
+  scheduler: "cosine_annealing"
+  warmup_epochs: 2
+  use_amp: true          # mixed precision for VRAM efficiency
+  early_stopping_patience: 5
+  early_stopping_metric: "val_auc"
+
+data:
+  dataset_dir: "datasets/deepfake"
+  manifest_path: "datasets/deepfake/manifest.json"
+  train_split: 0.8
+  val_split: 0.1
+  test_split: 0.1
+  # Face extraction settings
+  face_extraction:
+    enabled: true
+    margin: 0.3           # 30% margin around face crop
+    min_face_size: 60     # pixels
+    output_size: 380
+
+  augmentation:
+    horizontal_flip: true
+    color_jitter:
+      brightness: 0.2
+      contrast: 0.2
+      saturation: 0.2
+      hue: 0.05
+    random_resized_crop:
+      scale: [0.8, 1.0]
+    jpeg_compression:
+      enabled: true
+      quality_range: [30, 95]
+
+output:
+  checkpoint_dir: "models"
+  best_model_name: "deepfake_efficientnet_b4.pt"
+  log_dir: "logs/deepfake_training"

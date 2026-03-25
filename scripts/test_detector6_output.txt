@@ -1,0 +1,26 @@
+[ViT] ViT-B/16 loaded from models\image_forensics\pretrained_vit on cuda
+[ViT] Loading fine-tuned weights from models\image_forensics\deepfake_vit_b16.pt...
+[ViT] Fine-tuned weights loaded successfully.
+[Forensics] ViT-B/16 loaded with fine-tuned weights from models\image_forensics\deepfake_vit_b16.pt
+Testing image: C:/Users/hetes/.gemini/antigravity/brain/269281ca-ac47-4cd8-8603-f226bd48e569\media__1773345096003.jpg
+[Forensics] Analyzing: media__1773345096003.jpg
+[Forensics] Compression: Q=91, platform=twitter (conf=0.70), stat_reliability=0.20
+[Forensics] Image type: photograph (score: 0.80)
+Verdict: authentic
+Confidence: 93.9
+Is Smartphone: False
+Raw Scores:
+  compression:
+    estimated_quality: 91
+    platform_hint: twitter
+    platform_confidence: 0.7000000000000001
+    is_double_compressed: False
+    statistical_reliability: 0.2
+  metadata: 0.1
+  frequency: 0.08000000000000002
+  ela: 0.39999999999999997
+  noise: 0.0
+  pixel: 0.20800000000000002
+  neural: 0.05265107937157154
+  neural_tta_std: 0.0012
+  neural_effective: 0.05265107937157154

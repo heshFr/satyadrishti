@@ -1,0 +1,43 @@
+# ─────────────────────────────────────────────
+# Satya Drishti — Video Engine (ViT + X3D)
+# ─────────────────────────────────────────────
+
+spatial_stream:
+  name: "ViT-B/16"
+  pretrained: true
+  image_size: 224
+  patch_size: 16
+  num_classes: 2
+  freeze_backbone: false
+
+temporal_stream:
+  name: "X3D-S"
+  pretrained: true
+  clip_length: 16 # number of frames per clip
+  frame_rate: 15 # fps to sample from video
+  num_classes: 2
+
+rppg:
+  method: "chrom" # CHROM algorithm for rPPG extraction
+  window_size: 300 # frames (≈10 sec at 30fps)
+  bandpass_low: 0.7 # Hz (42 bpm)
+  bandpass_high: 4.0 # Hz (240 bpm)
+
+training:
+  batch_size: 16
+  epochs: 40
+  learning_rate: 0.00005
+  weight_decay: 0.0001
+  optimizer: "adamw"
+  scheduler: "cosine_annealing"
+  warmup_epochs: 3
+
+data:
+  datasets: ["faceforensics++", "dfdc", "wilddeepfake"]
+  face_detector: "mediapipe"
+  frame_size: 224
+  augmentations:
+    - "horizontal_flip"
+    - "random_crop"
+    - "color_jitter"
+    - "gaussian_noise"

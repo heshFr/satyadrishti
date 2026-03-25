@@ -1,0 +1,31 @@
+# ─────────────────────────────────────────────
+# Satya Drishti — Cross-Modal Fusion Config
+# ─────────────────────────────────────────────
+
+fusion:
+  architecture: "cross_attention"
+  latent_dim: 256 # unified embedding dimension
+  num_heads: 8
+  num_layers: 4
+  dropout: 0.1
+  num_classes: 4 # real, deepfake_only, coercion_only, deepfake+coercion
+
+modality_projectors:
+  audio_embed_dim: 768 # AST [CLS] token
+  video_embed_dim: 768 # ViT output dimension
+  text_embed_dim: 768 # DeBERTaV3 [CLS] token
+
+training:
+  batch_size: 32
+  epochs: 30
+  learning_rate: 0.0001
+  weight_decay: 0.0001
+  optimizer: "adamw"
+  scheduler: "cosine_annealing"
+  warmup_epochs: 3
+  freeze_encoders: true # freeze audio/video/text encoders
+
+optimization:
+  quantization: "int8"
+  onnx_opset: 17
+  target_runtime: "onnxruntime"

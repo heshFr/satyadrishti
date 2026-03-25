@@ -1,0 +1,36 @@
+# ─────────────────────────────────────────────
+# Satya Drishti — Audio Engine (RawNet3)
+# ─────────────────────────────────────────────
+
+model:
+  name: "RawNet3"
+  input_channels: 1
+  sinc_filters: 128
+  sinc_kernel_size: 1024
+  gru_hidden: 1024
+  gru_layers: 3
+  num_classes: 2 # bonafide vs. spoof
+
+features:
+  type: "lfcc"
+  n_filters: 70
+  n_lfcc: 60
+  sample_rate: 16000
+  win_length: 400 # 25ms at 16kHz
+  hop_length: 160 # 10ms at 16kHz
+  n_fft: 512
+
+training:
+  batch_size: 32
+  epochs: 50
+  learning_rate: 0.0001
+  weight_decay: 0.0001
+  optimizer: "adam"
+  scheduler: "cosine_annealing"
+  warmup_epochs: 5
+
+data:
+  dataset: "asvspoof2021"
+  tracks: ["LA", "DF"]
+  max_audio_length_sec: 4.0
+  sample_rate: 16000
