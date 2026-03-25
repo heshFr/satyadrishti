@@ -34,4 +34,5 @@ async def init_db():
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    log.info("Database initialized at %s", DATABASE_URL.split("///")[-1])
+    db_label = DATABASE_URL.split("@")[-1] if "@" in DATABASE_URL else DATABASE_URL.split("///")[-1]
+    log.info("Database initialized at %s", db_label)

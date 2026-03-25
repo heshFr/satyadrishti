@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: satyadrishti-api
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements-server.txt
+    startCommand: uvicorn server.app:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: SATYA_DATABASE_URL
+        fromDatabase:
+          name: satyadrishti-db
+          property: connectionString
+      - key: SATYA_JWT_SECRET
+        generateValue: true
+      - key: SATYA_CORS_ORIGINS
+        value: https://satyadrishti.vercel.app,http://localhost:3000
+      - key: PYTHON_VERSION
+        value: "3.10.13"
+
+databases:
+  - name: satyadrishti-db
+    plan: free
+    databaseName: satyadrishti

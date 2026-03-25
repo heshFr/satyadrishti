@@ -1,0 +1,22 @@
+# Lightweight server-only dependencies (no PyTorch/ML — runs in stub mode)
+# Used for Render/Railway/Heroku free-tier deployment
+
+# Web framework
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+python-multipart>=0.0.9
+
+# Database (async PostgreSQL + SQLite fallback)
+sqlalchemy[asyncio]>=2.0.0
+asyncpg>=0.29.0
+aiosqlite>=0.19.0
+
+# Auth
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+
+# PDF reports
+reportlab>=4.1.0
+
+# Utils (used by non-ML parts of inference_engine)
+numpy>=1.26.0

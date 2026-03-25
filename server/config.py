@@ -13,10 +13,16 @@ MODEL_DIR = PROJECT_ROOT / "models"
 DB_PATH = PROJECT_ROOT / "satyadrishti.db"
 
 # ─── Database ───
-DATABASE_URL = os.environ.get(
-    "SATYA_DATABASE_URL",
-    f"sqlite+aiosqlite:///{DB_PATH}",
-)
+_raw_db_url = os.environ.get("SATYA_DATABASE_URL") or os.environ.get("DATABASE_URL") or ""
+if _raw_db_url:
+    # Render/Railway provide postgres:// but SQLAlchemy needs postgresql+asyncpg://
+    if _raw_db_url.startswith("postgres://"):
+        _raw_db_url = _raw_db_url.replace("postgres://", "postgresql+asyncpg://", 1)
+    elif _raw_db_url.startswith("postgresql://"):
+        _raw_db_url = _raw_db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    DATABASE_URL = _raw_db_url
+else:
+    DATABASE_URL = f"sqlite+aiosqlite:///{DB_PATH}"
 
 # ─── Auth ───
 JWT_SECRET = os.environ.get("SATYA_JWT_SECRET", "")
@@ -33,7 +39,7 @@ OAUTH_REDIRECT_URI = os.environ.get("OAUTH_REDIRECT_URI", "http://localhost:3000
 # ─── CORS ───
 CORS_ORIGINS = os.environ.get(
     "SATYA_CORS_ORIGINS",
-    "http://localhost:3000,http://localhost:3001,http://localhost:5173",
+    "http://localhost:3000,http://localhost:3001,http://localhost:5173,https://satyadrishti.vercel.app",
 ).split(",")
 
 # ─── Server ───
