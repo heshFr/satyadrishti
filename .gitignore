@@ -67,3 +67,4 @@ stitch_satya_drishti/
 
 # Claude Code local settings
 .claude/settings.local.json
+.vercel

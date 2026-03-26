@@ -43,7 +43,7 @@ const LandingNav = () => {
                 <div className="absolute inset-0 bg-primary/20 blur-lg rounded-full" />
                 <Shield className="w-6 h-6 text-primary relative drop-shadow-[0_0_10px_rgba(6,182,212,0.5)]" fill="currentColor" fillOpacity={0.15} />
               </div>
-              <span className="text-lg font-display font-bold text-white">{t("common.appName")}</span>
+              <span className="text-xl font-display font-extrabold text-white tracking-tight">Satya Drishti</span>
             </Link>
 
             {/* Desktop nav links */}
@@ -67,10 +67,10 @@ const LandingNav = () => {
 
               {isAuthenticated ? (
                 <Link
-                  to="/dashboard"
+                  to="/call-protection"
                   className="hidden md:flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-primary to-accent text-white text-sm font-display font-semibold hover:shadow-glow-sm transition-all cursor-pointer"
                 >
-                  {t("common.dashboard")}
+                  Dashboard
                   <ArrowRight className="w-3.5 h-3.5" />
                 </Link>
               ) : (
@@ -82,7 +82,7 @@ const LandingNav = () => {
                     {t("common.login")}
                   </Link>
                   <Link
-                    to="/register"
+                    to="/login"
                     className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-primary to-accent text-white text-sm font-display font-semibold hover:shadow-glow-sm transition-all cursor-pointer"
                   >
                     Get Started
@@ -135,7 +135,7 @@ const LandingNav = () => {
                     {t("common.login")}
                   </Link>
                   <Link
-                    to="/register"
+                    to="/login"
                     onClick={() => setMobileOpen(false)}
                     className="flex-1 text-center px-4 py-2.5 rounded-xl bg-gradient-to-r from-primary to-accent text-white text-sm font-display font-semibold cursor-pointer"
                   >

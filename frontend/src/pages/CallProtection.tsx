@@ -118,17 +118,33 @@ const CallProtection = () => {
       <div className="pb-12 px-8 max-w-[1600px] mx-auto space-y-8">
 
         {/* ── START / STOP — Always at the very top ── */}
-        <motion.section {...stagger(0)} className="flex flex-wrap gap-6 py-4">
+        <motion.section {...stagger(0)} className="py-4">
           {!isActive ? (
-            <button
-              onClick={() => cp.startProtection()}
-              className="flex-1 min-w-[240px] h-20 bg-gradient-to-r from-primary to-primary-container text-on-primary-container hover:shadow-[0_0_40px_rgba(0,209,255,0.5)] transition-all duration-300 rounded-2xl flex items-center justify-center gap-4 font-headline font-extrabold text-xl uppercase tracking-wider shadow-lg cursor-pointer"
-            >
-              <MaterialIcon icon="shield" filled size={32} />
-              Start Call Protection
-            </button>
+            <div className="flex flex-col items-center gap-6 py-8">
+              <motion.div
+                className="relative w-24 h-24 flex items-center justify-center"
+                animate={{ scale: [1, 1.05, 1] }}
+                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+              >
+                <div className="absolute inset-0 rounded-full bg-primary/10 animate-ping" style={{ animationDuration: '3s' }} />
+                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary/20 to-primary-container/10 flex items-center justify-center border border-primary/20">
+                  <MaterialIcon icon="shield" filled size={40} className="text-primary" />
+                </div>
+              </motion.div>
+              <div className="text-center space-y-2 max-w-md">
+                <h2 className="text-2xl font-headline font-extrabold text-on-surface">Real-Time Call Protection</h2>
+                <p className="text-sm text-on-surface-variant">Activate the AI shield to monitor incoming calls for deepfake voice cloning, coercion patterns, and financial threats in real-time.</p>
+              </div>
+              <button
+                onClick={() => cp.startProtection()}
+                className="min-w-[320px] h-20 bg-gradient-to-r from-primary to-primary-container text-on-primary-container hover:shadow-[0_0_60px_rgba(0,209,255,0.5)] transition-all duration-300 rounded-2xl flex items-center justify-center gap-4 font-headline font-extrabold text-xl uppercase tracking-wider shadow-[0_8px_30px_rgba(0,209,255,0.25)] cursor-pointer"
+              >
+                <MaterialIcon icon="shield" filled size={32} />
+                Start Call Protection
+              </button>
+            </div>
           ) : (
-            <>
+            <div className="flex flex-wrap gap-6">
               <button
                 onClick={() => cp.stopProtection()}
                 className="flex-1 min-w-[240px] h-20 bg-gradient-to-r from-error-container to-error text-on-error hover:brightness-110 transition-all duration-300 rounded-2xl flex items-center justify-center gap-4 font-headline font-extrabold text-lg uppercase tracking-wider shadow-lg cursor-pointer group"
@@ -159,7 +175,7 @@ const CallProtection = () => {
                   <span className="text-on-surface">Reconnect Screen Share</span>
                 </button>
               )}
-            </>
+            </div>
           )}
         </motion.section>
 

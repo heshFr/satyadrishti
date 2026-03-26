@@ -26,10 +26,10 @@ const TopBar = ({ systemStatus }: TopBarProps) => {
 
   const navItems: { path: string; label: string; icon?: string; highlight?: boolean }[] = [
     { path: "/call-protection", label: "Call Protection", icon: "shield", highlight: true },
-    { path: "/scanner", label: t("common.scanner"), icon: "search" },
-    { path: "/history", label: t("common.history"), icon: "history" },
+    { path: "/scanner", label: t("common.scanner"), icon: "image_search" },
     { path: "/help", label: "Help", icon: "help_outline" },
     { path: "/contact", label: "Contact", icon: "mail" },
+    { path: "/settings", label: "Settings", icon: "settings" },
   ];
 
   const isLanding = location.pathname === "/";

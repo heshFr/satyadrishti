@@ -86,7 +86,7 @@ const Landing = () => {
                 <Link to="/login" className="text-on-surface-variant hover:text-on-surface font-headline tracking-tight font-bold text-sm uppercase transition-all">
                   {t("common.login")}
                 </Link>
-                <Link to="/register" className="bg-gradient-to-br from-primary to-primary-container text-on-primary px-6 py-2 rounded-lg font-headline tracking-tight font-bold text-sm uppercase transition-transform active:scale-95">
+                <Link to="/login" className="bg-gradient-to-br from-primary to-primary-container text-on-primary px-6 py-2 rounded-lg font-headline tracking-tight font-bold text-sm uppercase transition-transform active:scale-95">
                   Get Started
                 </Link>
               </>
@@ -95,7 +95,13 @@ const Landing = () => {
         </div>
       </nav>
 
-      <main className="pt-32">
+      <main className="pt-32 relative">
+        {/* Global continuous background */}
+        <div className="fixed inset-0 pointer-events-none z-0">
+          <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-primary/[0.03] rounded-full blur-[200px]" />
+          <div className="absolute bottom-[30%] left-0 w-[600px] h-[600px] bg-secondary/[0.02] rounded-full blur-[150px]" />
+        </div>
+
         {/* ── Hero Section ── */}
         <section className="relative px-12 py-24 overflow-hidden">
           <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center gap-16 relative z-10">
@@ -110,8 +116,8 @@ const Landing = () => {
                 <span className="text-xs font-label tracking-widest uppercase text-on-surface-variant">Real-time threat monitoring active</span>
               </motion.div>
 
-              <motion.h1 variants={stagger.item} className="text-6xl md:text-8xl font-headline font-extrabold tracking-tighter leading-none text-on-surface">
-                The Truth, <br /><span className="text-primary-container">Authenticated.</span>
+              <motion.h1 variants={stagger.item} className="text-5xl md:text-7xl font-headline font-extrabold tracking-tighter leading-none text-on-surface">
+                <span className="text-6xl md:text-8xl">Satya Drishti</span><br /><span className="text-primary-container text-3xl md:text-4xl font-bold">The Truth, Authenticated.</span>
               </motion.h1>
 
               <motion.p variants={stagger.item} className="text-xl text-on-surface-variant font-body leading-relaxed max-w-lg">
@@ -120,7 +126,7 @@ const Landing = () => {
 
               <motion.div variants={stagger.item} className="flex flex-wrap gap-6 pt-4">
                 <Link
-                  to={isAuthenticated ? "/call-protection" : "/register"}
+                  to={isAuthenticated ? "/call-protection" : "/login"}
                   className="px-10 py-5 bg-gradient-to-br from-primary to-primary-container text-on-primary font-headline font-bold uppercase tracking-tight rounded-xl shadow-2xl hover:brightness-110 transition-all"
                 >
                   Start Protecting Your Family
@@ -161,8 +167,12 @@ const Landing = () => {
           <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-primary/5 to-transparent blur-3xl pointer-events-none" />
         </section>
 
+        {/* ── Gradient transition ── */}
+        <div className="h-32 section-transition relative z-10" />
+
         {/* ── Stats Section ── */}
-        <section className="px-12 py-32 bg-surface-container-lowest">
+        <section className="px-12 py-24 relative z-10">
+          <div className="absolute inset-0 section-glow-cyan pointer-events-none" />
           <div className="max-w-7xl mx-auto">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-20">
               <div className="space-y-4 border-l border-outline-variant/15 pl-8">
@@ -185,8 +195,12 @@ const Landing = () => {
           </div>
         </section>
 
+        {/* ── Gradient transition ── */}
+        <div className="h-24 section-transition relative z-10" />
+
         {/* ── Features Bento Grid ── */}
-        <section id="features" className="px-12 py-32">
+        <section id="features" className="px-12 py-24 relative z-10">
+          <div className="absolute inset-0 section-glow-emerald pointer-events-none" />
           <div className="max-w-7xl mx-auto space-y-16">
             <div className="text-center space-y-4">
               <h2 className="text-4xl md:text-5xl font-headline font-extrabold text-on-surface">The Sentinel Ecosystem</h2>
@@ -195,7 +209,7 @@ const Landing = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
               {/* Voice Cloning Detection — Large */}
-              <div className="md:col-span-8 bg-surface-container-low p-12 rounded-3xl group relative overflow-hidden border border-outline-variant/5">
+              <div className="md:col-span-8 bg-surface-container-low/60 backdrop-blur-sm p-12 rounded-3xl group relative overflow-hidden border border-outline-variant/10 hover:border-primary/15 transition-all duration-500">
                 <div className="relative z-10 space-y-6">
                   <MaterialIcon icon="record_voice_over" filled size={48} className="text-secondary" />
                   <h3 className="text-3xl font-headline font-bold text-on-surface">Voice Cloning Detection</h3>
@@ -205,7 +219,7 @@ const Landing = () => {
               </div>
 
               {/* Visual Verifier */}
-              <div className="md:col-span-4 bg-surface-container p-12 rounded-3xl border border-outline-variant/5 flex flex-col justify-between">
+              <div className="md:col-span-4 bg-surface-container/60 backdrop-blur-sm p-12 rounded-3xl border border-outline-variant/10 hover:border-primary/15 flex flex-col justify-between transition-all duration-500">
                 <MaterialIcon icon="visibility" size={48} className="text-primary-container" />
                 <div className="space-y-4 mt-8">
                   <h3 className="text-2xl font-headline font-bold text-on-surface">Visual Verifier</h3>
@@ -214,7 +228,7 @@ const Landing = () => {
               </div>
 
               {/* Digital Signature */}
-              <div className="md:col-span-4 bg-surface-container-high p-12 rounded-3xl border border-outline-variant/5">
+              <div className="md:col-span-4 bg-surface-container-high/60 backdrop-blur-sm p-12 rounded-3xl border border-outline-variant/10 hover:border-primary/15 transition-all duration-500">
                 <MaterialIcon icon="verified_user" filled size={48} className="text-primary" />
                 <div className="mt-8 space-y-4">
                   <h3 className="text-2xl font-headline font-bold text-on-surface">Voice Prints</h3>
@@ -223,7 +237,7 @@ const Landing = () => {
               </div>
 
               {/* Real-time Scanning — Large */}
-              <div className="md:col-span-8 bg-surface-container-low p-12 rounded-3xl relative overflow-hidden group border border-outline-variant/5">
+              <div className="md:col-span-8 bg-surface-container-low/60 backdrop-blur-sm p-12 rounded-3xl relative overflow-hidden group border border-outline-variant/10 hover:border-primary/15 transition-all duration-500">
                 <div className="relative z-10 space-y-6">
                   <h3 className="text-3xl font-headline font-bold text-on-surface">Real-time Call Protection</h3>
                   <p className="text-on-surface-variant max-w-sm">Live monitoring that analyzes incoming calls for voice cloning, coercion patterns, and identity mismatch — all in under 3 seconds.</p>
@@ -238,56 +252,29 @@ const Landing = () => {
           </div>
         </section>
 
-        {/* ── Trust Signals ── */}
-        <section className="px-12 py-32 bg-surface-container-low">
-          <div className="max-w-7xl mx-auto">
-            <div className="flex flex-col md:flex-row justify-between items-end gap-12 mb-20">
-              <div className="max-w-xl space-y-6">
-                <h2 className="text-4xl font-headline font-extrabold text-on-surface">Built for Indian Families</h2>
-                <p className="text-on-surface-variant text-lg">Protecting families from voice cloning scams, digital kidnapping threats, and AI-powered coercion. Multilingual support for Hindi, Marathi, and English.</p>
-              </div>
+        {/* ── Why Trust Satya Drishti ── */}
+        <section className="px-12 py-32 relative">
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary/3 to-transparent pointer-events-none" />
+          <div className="max-w-7xl mx-auto relative z-10">
+            <div className="text-center space-y-6 mb-20">
+              <h2 className="text-4xl md:text-5xl font-headline font-extrabold text-on-surface">Built for Indian Families</h2>
+              <p className="text-on-surface-variant text-lg max-w-2xl mx-auto">Protecting families from voice cloning scams, digital kidnapping threats, and AI-powered coercion. Multilingual support for Hindi, Marathi, and English.</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-              <div className="p-12 bg-surface-container rounded-3xl border border-outline-variant/10">
-                <div className="flex gap-1 text-secondary mb-6">
-                  {[1,2,3,4,5].map(i => (
-                    <MaterialIcon key={i} icon="star" filled size={20} className="text-secondary" />
-                  ))}
-                </div>
-                <p className="text-xl font-body italic text-on-surface leading-relaxed">
-                  "Satya Drishti flagged a suspicious call from my 'bank' that sounded identical to my relationship manager. It saved us from a massive credential theft attempt."
-                </p>
-                <div className="mt-8 flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-surface-container-highest flex items-center justify-center">
-                    <MaterialIcon icon="person" filled className="text-primary" />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {[
+                { icon: "lock", title: "Privacy First", desc: "All analysis is performed locally. Audio is processed in real-time and immediately discarded — we never store your calls." },
+                { icon: "speed", title: "Sub-Second Detection", desc: "Our 9-layer neural engine analyzes voice patterns in under 0.3 seconds, detecting synthetic artifacts before they reach you." },
+                { icon: "translate", title: "Multilingual Safety", desc: "Full support for English, Hindi, and Marathi — ensuring every family member can use and understand the protection." },
+              ].map((item) => (
+                <div key={item.title} className="p-10 rounded-3xl bg-surface-container-low/60 backdrop-blur-sm border border-outline-variant/10 space-y-5 group hover:bg-surface-container-high/40 transition-all duration-300">
+                  <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                    <MaterialIcon icon={item.icon} filled size={28} className="text-primary" />
                   </div>
-                  <div>
-                    <div className="font-bold text-on-surface">Security Professional</div>
-                    <div className="text-xs text-on-surface-variant uppercase tracking-widest">Mumbai, India</div>
-                  </div>
+                  <h3 className="text-2xl font-headline font-bold text-on-surface">{item.title}</h3>
+                  <p className="text-on-surface-variant leading-relaxed">{item.desc}</p>
                 </div>
-              </div>
-
-              <div className="p-12 bg-surface-container rounded-3xl border border-outline-variant/10">
-                <div className="flex gap-1 text-secondary mb-6">
-                  {[1,2,3,4,5].map(i => (
-                    <MaterialIcon key={i} icon="star" filled size={20} className="text-secondary" />
-                  ))}
-                </div>
-                <p className="text-xl font-body italic text-on-surface leading-relaxed">
-                  "The peace of mind knowing my parents are protected from these advanced voice-cloning scams is invaluable. It's the new standard for family safety."
-                </p>
-                <div className="mt-8 flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-surface-container-highest flex items-center justify-center">
-                    <MaterialIcon icon="person" filled className="text-secondary" />
-                  </div>
-                  <div>
-                    <div className="font-bold text-on-surface">Family Safety Advocate</div>
-                    <div className="text-xs text-on-surface-variant uppercase tracking-widest">Pune, India</div>
-                  </div>
-                </div>
-              </div>
+              ))}
             </div>
           </div>
         </section>
@@ -306,7 +293,7 @@ const Landing = () => {
             </div>
             <div className="relative z-10 flex flex-col md:flex-row justify-center items-center gap-6">
               <Link
-                to={isAuthenticated ? "/dashboard" : "/register"}
+                to={isAuthenticated ? "/call-protection" : "/login"}
                 className="w-full md:w-auto px-12 py-6 bg-gradient-to-br from-primary to-primary-container text-on-primary font-headline font-extrabold text-lg uppercase tracking-tight rounded-2xl shadow-[0_20px_40px_rgba(0,209,255,0.2)] hover:scale-105 active:scale-95 transition-all"
               >
                 Start Protecting Your Family

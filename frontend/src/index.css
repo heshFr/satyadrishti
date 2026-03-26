@@ -25,21 +25,21 @@
 
 /* Light theme */
 .light {
-  --surface: #f4f7fb;
-  --surface-container: #e8ecf2;
-  --surface-container-low: #eef1f6;
-  --surface-container-high: #dde2ea;
-  --surface-container-highest: #d2d8e2;
+  --surface: #f8fafb;
+  --surface-container: #eef2f6;
+  --surface-container-low: #f3f6f9;
+  --surface-container-high: #e4e9ef;
+  --surface-container-highest: #d8dee6;
   --surface-container-lowest: #ffffff;
-  --on-surface: #161b2e;
-  --on-surface-variant: #3e4a5a;
-  --primary: #006b8a;
+  --on-surface: #111827;
+  --on-surface-variant: #475569;
+  --primary: #0077a3;
   --primary-container: #0094c4;
   --secondary: #006d4a;
   --secondary-container: #008a5e;
   --error: #ba1a1a;
   --error-container: #ffdad6;
-  --outline-variant: #c2cad4;
+  --outline-variant: #c8d0da;
 }
 
 /* ─── Base ─── */
@@ -97,7 +97,8 @@ body {
   }
 
   .light .glass-panel {
-    background: rgba(255, 255, 255, 0.6);
+    background: rgba(255, 255, 255, 0.75);
+    border: 1px solid rgba(200, 208, 218, 0.3);
   }
 
   .glass-card {
@@ -114,10 +115,11 @@ body {
   .light .glass-card {
     background: linear-gradient(
       135deg,
-      rgba(255, 255, 255, 0.85) 0%,
-      rgba(240, 244, 250, 0.7) 50%,
-      rgba(255, 255, 255, 0.85) 100%
+      rgba(255, 255, 255, 0.9) 0%,
+      rgba(248, 250, 251, 0.8) 50%,
+      rgba(255, 255, 255, 0.9) 100%
     );
+    border: 1px solid rgba(200, 208, 218, 0.25);
   }
 
   /* Ghost border — felt, not seen (per design spec) */
@@ -303,4 +305,23 @@ body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* ─── Cinematic Section Utilities ─── */
+.section-glow-cyan {
+  background: radial-gradient(ellipse 80% 50% at 50% 50%, rgba(0, 209, 255, 0.04) 0%, transparent 70%);
+}
+.section-glow-emerald {
+  background: radial-gradient(ellipse 80% 50% at 50% 50%, rgba(78, 222, 163, 0.04) 0%, transparent 70%);
+}
+.section-transition {
+  background: linear-gradient(180deg, transparent 0%, rgba(0, 209, 255, 0.02) 50%, transparent 100%);
+}
+
+/* Light mode adjustments for landing sections */
+.light .section-glow-cyan {
+  background: radial-gradient(ellipse 80% 50% at 50% 50%, rgba(0, 119, 163, 0.03) 0%, transparent 70%);
+}
+.light .section-glow-emerald {
+  background: radial-gradient(ellipse 80% 50% at 50% 50%, rgba(0, 109, 74, 0.03) 0%, transparent 70%);
 }

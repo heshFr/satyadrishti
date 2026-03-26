@@ -48,16 +48,16 @@ interface EmergencyContact {
   relationship: string;
 }
 
-type Section = "profile" | "security" | "notifications" | "privacy" | "ai" | "family" | "appearance";
+type Section = "profile" | "privacy-security" | "notifications" | "ai" | "family" | "appearance" | "history";
 
 const SIDEBAR_ITEMS: { id: Section; icon: string; label: string }[] = [
   { id: "profile", icon: "person", label: "Profile" },
-  { id: "security", icon: "shield", label: "Security" },
+  { id: "privacy-security", icon: "shield", label: "Privacy & Security" },
   { id: "notifications", icon: "notifications_active", label: "Notifications" },
-  { id: "privacy", icon: "lock", label: "Privacy" },
   { id: "ai", icon: "psychology", label: "AI Config" },
   { id: "family", icon: "family_restroom", label: "Family" },
   { id: "appearance", icon: "palette", label: "Appearance" },
+  { id: "history", icon: "history", label: "History" },
 ];
 
 const SettingsPage = () => {
@@ -310,17 +310,18 @@ const SettingsPage = () => {
                 </div>
               )}
 
-              {/* Security Protocol (7 cols) */}
-              {show("security") && (
+              {/* Privacy & Security (combined — 7 cols) */}
+              {activeSection === "privacy-security" && (
                 <div className="col-span-12 lg:col-span-7 glass-panel border border-outline-variant/15 rounded-xl p-8">
                   <div className="flex items-center justify-between mb-8">
                     <div className="flex items-center gap-3">
                       <MaterialIcon icon="security" filled className="text-secondary" size={24} />
-                      <h3 className="font-headline font-bold text-lg">Security Protocol</h3>
+                      <h3 className="font-headline font-bold text-lg">Privacy & Security</h3>
                     </div>
                     <span className="px-3 py-1 bg-secondary/10 text-secondary text-xs rounded-full border border-secondary/20">All Clear</span>
                   </div>
                   <div className="space-y-6">
+                    {/* 2FA */}
                     <div className="flex items-center justify-between border-b border-outline-variant/10 pb-4">
                       <div>
                         <p className="font-medium">Two-Factor Authentication</p>
@@ -373,6 +374,21 @@ const SettingsPage = () => {
                       </AnimatePresence>
                     </div>
 
+                    {/* Privacy settings */}
+                    <div className="border-t border-outline-variant/10 pt-6 space-y-5">
+                      <h4 className="text-xs font-label uppercase tracking-widest text-outline">Data & Privacy</h4>
+                      <div className="flex items-center justify-between">
+                        <div><p className="font-medium">Auto-Delete Scans</p><p className="text-xs text-on-surface-variant">Automatically remove scan history</p></div>
+                        <select value={autoDelete} onChange={(e) => setAutoDelete(e.target.value)}
+                          className="bg-surface-container-low border-b border-outline-variant text-on-surface py-2 text-sm outline-none">
+                          <option value="never">Never</option><option value="7">After 7 days</option><option value="30">After 30 days</option><option value="90">After 90 days</option>
+                        </select>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div><p className="font-medium">Anonymous Mode</p><p className="text-xs text-on-surface-variant">Don't store any identifying data</p></div>
+                        <Toggle enabled={anonymousMode} onChange={setAnonymousMode} />
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -438,10 +454,9 @@ const SettingsPage = () => {
                         onChange={(e) => handleLanguageChange(e.target.value)}
                         className="w-full bg-surface-container-low border border-outline-variant/30 rounded-lg p-2 text-sm text-on-surface outline-none"
                       >
-                        <option value="en">English (Sentinel Standard)</option>
+                        <option value="en">English (Indian Standard)</option>
                         <option value="hi">Hindi</option>
                         <option value="mr">Marathi</option>
-                        <option value="hi-en">Hinglish</option>
                       </select>
                     </div>
                   </div>
@@ -465,22 +480,21 @@ const SettingsPage = () => {
                 </div>
               )}
 
-              {/* Privacy */}
-              {activeSection === "privacy" && (
+              {/* History Section */}
+              {activeSection === "history" && (
                 <div className="col-span-12 glass-panel border border-outline-variant/15 rounded-xl p-8 space-y-6">
-                  <h3 className="font-headline font-bold text-lg tracking-tight">Privacy &amp; Data</h3>
-                  <div className="space-y-5">
-                    <div className="flex items-center justify-between">
-                      <div><p className="font-medium">Auto-Delete Scans</p><p className="text-xs text-on-surface-variant">Automatically remove scan history</p></div>
-                      <select value={autoDelete} onChange={(e) => setAutoDelete(e.target.value)}
-                        className="bg-surface-container-low border-b border-outline-variant text-on-surface py-2 text-sm outline-none">
-                        <option value="never">Never</option><option value="7">After 7 days</option><option value="30">After 30 days</option><option value="90">After 90 days</option>
-                      </select>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div><p className="font-medium">Anonymous Mode</p><p className="text-xs text-on-surface-variant">Don't store any identifying data</p></div>
-                      <Toggle enabled={anonymousMode} onChange={setAnonymousMode} />
-                    </div>
+                  <div className="flex items-center gap-3">
+                    <MaterialIcon icon="history" className="text-primary" size={24} />
+                    <h3 className="font-headline font-bold text-lg tracking-tight">Scan & Analysis History</h3>
+                  </div>
+                  <div className="text-center py-12 space-y-4">
+                    <MaterialIcon icon="folder_open" className="text-on-surface-variant/30" size={48} />
+                    <p className="text-on-surface-variant">Your scan history will appear here.</p>
+                    <p className="text-xs text-on-surface-variant/50">All past scanner results and call protection logs will be shown in this section.</p>
+                    <Link to="/scanner" className="inline-flex items-center gap-2 px-6 py-3 bg-primary/10 text-primary rounded-xl text-sm font-bold hover:bg-primary/20 transition-colors">
+                      <MaterialIcon icon="image_search" size={18} />
+                      Start a New Scan
+                    </Link>
                   </div>
                 </div>
               )}

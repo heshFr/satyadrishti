@@ -255,7 +255,7 @@ const Login = () => {
   const { login, register, startOAuth, verify2FA } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const redirect = searchParams.get("redirect") || "/dashboard";
+  const redirect = searchParams.get("redirect") || "/call-protection";
 
   // ── Auth State ──
   const [mode, setMode] = useState<AuthMode>("login");
@@ -702,7 +702,7 @@ const Login = () => {
                         : "text-on-surface-variant hover:text-on-surface"
                     }`}
                   >
-                    {tab === "login" ? "Sign In" : "Register"}
+                    {tab === "login" ? "Login" : "Sign Up"}
                   </button>
                 ))}
               </div>
