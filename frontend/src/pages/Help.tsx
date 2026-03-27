@@ -100,11 +100,14 @@ const Help = () => {
         <section className="space-y-6">
           <div className="flex justify-between items-end">
             <h2 className="font-headline text-2xl font-bold tracking-tight">Quick-start Guides</h2>
+            <Link to="/help" className="text-primary text-sm font-medium hover:underline">
+              View all guides &rarr;
+            </Link>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             {/* Shield Management — large card */}
             <Link
-              to="/call-protection"
+              to="/dashboard"
               className="md:col-span-2 md:row-span-2 bg-surface-container-low rounded-xl p-8 flex flex-col justify-between group cursor-pointer hover:bg-surface-container-high transition-all duration-300 relative overflow-hidden"
             >
               <div className="relative z-10 space-y-4">
@@ -136,7 +139,7 @@ const Help = () => {
 
             {/* Vault Access */}
             <Link
-              to="/settings"
+              to="/history"
               className="bg-surface-container-low rounded-xl p-6 hover:bg-surface-container-high transition-all group cursor-pointer border border-outline-variant/10"
             >
               <MaterialIcon icon="lock_open" className="text-tertiary mb-4" size={24} />

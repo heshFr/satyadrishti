@@ -46,15 +46,15 @@ ANALYZER_ORDER = [
 # Default weights (before training) — reflect relative reliability
 # AST is the primary neural detector; other layers provide supporting evidence
 DEFAULT_WEIGHTS = {
-    "ast": 0.35,
-    "rawnet3": 0.10,
-    "ssl": 0.15,
-    "whisper_features": 0.08,
-    "prosodic": 0.10,
-    "breathing": 0.05,
-    "phase": 0.05,
-    "formant": 0.05,
-    "temporal": 0.07,
+    "ast": 0.10,
+    "rawnet3": 0.05,
+    "ssl": 0.20,
+    "whisper_features": 0.15,
+    "prosodic": 0.20,
+    "breathing": 0.15,
+    "phase": 0.025,
+    "formant": 0.025,
+    "temporal": 0.10,
 }
 
 # Verdict thresholds — tuned for real-time call protection sensitivity
@@ -165,10 +165,12 @@ class EnsembleFusion:
         per_analyzer = self._per_analyzer_breakdown(valid, probability)
 
         # Verdict
-        verdict = self._determine_verdict(probability, uncertainty, valid)
+        verdict, veto_reason = self._determine_verdict(probability, uncertainty, valid)
 
         # Explanation
         explanation = self._generate_explanation(valid, per_analyzer, verdict, probability)
+        if veto_reason:
+            explanation.insert(0, f"BIOLOGICAL VETO: {veto_reason}")
 
         result = {
             "verdict": verdict,
@@ -178,6 +180,10 @@ class EnsembleFusion:
             "per_analyzer": per_analyzer,
             "explanation": explanation,
         }
+        
+        if veto_reason:
+            result["biological_veto"] = True
+            result["veto_reason"] = veto_reason
 
         logger.info(
             "EnsembleFusion result: verdict=%s probability=%.4f confidence=%.4f uncertainty=%.4f (%d analyzers)",
@@ -470,34 +476,37 @@ class EnsembleFusion:
     @staticmethod
     def _determine_verdict(
         probability: float, uncertainty: float, valid: dict | None = None
-    ) -> str:
+    ) -> tuple[str, str | None]:
         """
         Determine verdict from probability, uncertainty, and analyzer data.
 
         For call protection, we err on the side of caution:
         - High probability spoof should trigger even with analyzer disagreement
-        - When the primary neural detector (AST) is highly confident, its
-          opinion overrides noisy heuristic layers
+        - Biological Veto System: Biological failures immediately trigger a spoof
+          alert regardless of neural confidence.
         """
+        # Biological Veto System: If physics/biology detect catastrophic failure, instant spoof.
+        if valid:
+            # 1. Lack of breathing for extended periods
+            if "breathing" in valid and valid["breathing"]["score"] > 0.85:
+                return "spoof", "Mathematically Impossible Breathing Pattern Detected"
+            # 2. Impossible vocal cord stability (Prosody)
+            if "prosodic" in valid and valid["prosodic"]["score"] > 0.85:
+                return "spoof", "Mathematically Impossible Vocal Cord Jitter Detected"
+            # 3. Impossible temporal consistency (Embedding)
+            if "temporal" in valid and valid["temporal"]["score"] > 0.85:
+                return "spoof", "Unnaturally Consistent Temporal Embedding Detected"
+
         # Very high probability overrides uncertainty entirely
         if probability > 0.8:
-            return "spoof"
-
-        # AST override: if the primary neural detector is very confident (>0.85)
-        # and the fused probability is above the spoof threshold, trust it —
-        # heuristic layers (breathing, phase, formant) are naturally noisy on
-        # non-speech audio and their disagreement shouldn't block detection
-        if valid and "ast" in valid:
-            ast_score = valid["ast"]["score"]
-            if ast_score > 0.85 and probability > SPOOF_THRESHOLD:
-                return "spoof"
+            return "spoof", None
 
         if probability > SPOOF_THRESHOLD and uncertainty < UNCERTAINTY_THRESHOLD:
-            return "spoof"
+            return "spoof", None
         elif probability < BONAFIDE_THRESHOLD:
-            return "bonafide"
+            return "bonafide", None
         else:
-            return "uncertain"
+            return "uncertain", None
 
     def _generate_explanation(
         self,

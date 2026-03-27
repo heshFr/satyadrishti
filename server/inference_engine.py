@@ -846,6 +846,8 @@ class InferenceEngine:
                         "layers_active": layers_run,
                         "layers_total": 9,
                         "duration_seconds": round(duration, 2),
+                        "biological_veto": fusion_result.get("biological_veto", False),
+                        "veto_reason": fusion_result.get("veto_reason"),
                     },
                 }
             except Exception as e:

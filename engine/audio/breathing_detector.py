@@ -471,14 +471,14 @@ class BreathingDetector:
             penalties.append(float(np.clip(regularity_penalty, 0.0, 0.5)))
 
         # ---- Anomaly 4: No inhalation before speech onsets ---------------
-        if speech_seconds > 3.0 and not has_inhalation and breath_count > 0:
+        if speech_seconds > 4.0 and not has_inhalation and breath_count > 0:
             anomalies.append("no_pre_speech_inhalation")
-            penalties.append(0.25)
+            penalties.append(0.65)  # Heavy penalty: TTS often drops pre-onset breath
 
-        if speech_seconds > 3.0 and not has_inhalation and breath_count == 0:
-            # Already penalised for no breathing, but stack a small amount
+        if speech_seconds > 4.0 and not has_inhalation and breath_count == 0:
+            # Already penalised for no breathing, but this confirms synthetic generation
             anomalies.append("no_inhalation_at_all")
-            penalties.append(0.15)
+            penalties.append(0.85)  # Catastrophic biological failure
 
         # ---- Anomaly 5: Onset sharpness (TTS often very sharp) -----------
         if onset_sharpness > 0.85:

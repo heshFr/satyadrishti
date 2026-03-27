@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Shield, Menu, X, ArrowRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
-import LanguageToggle from "./LanguageToggle";
+
 
 const navLinks = [
   { to: "#features", label: "Features" },
@@ -43,7 +43,7 @@ const LandingNav = () => {
                 <div className="absolute inset-0 bg-primary/20 blur-lg rounded-full" />
                 <Shield className="w-6 h-6 text-primary relative drop-shadow-[0_0_10px_rgba(6,182,212,0.5)]" fill="currentColor" fillOpacity={0.15} />
               </div>
-              <span className="text-xl font-display font-extrabold text-white tracking-tight">Satya Drishti</span>
+              <span className="text-lg font-display font-bold text-white">{t("common.appName")}</span>
             </Link>
 
             {/* Desktop nav links */}
@@ -61,16 +61,14 @@ const LandingNav = () => {
 
             {/* Right side */}
             <div className="flex items-center gap-3">
-              <div className="hidden md:block">
-                <LanguageToggle />
-              </div>
+
 
               {isAuthenticated ? (
                 <Link
-                  to="/call-protection"
+                  to="/dashboard"
                   className="hidden md:flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-primary to-accent text-white text-sm font-display font-semibold hover:shadow-glow-sm transition-all cursor-pointer"
                 >
-                  Dashboard
+                  {t("common.dashboard")}
                   <ArrowRight className="w-3.5 h-3.5" />
                 </Link>
               ) : (
@@ -82,10 +80,10 @@ const LandingNav = () => {
                     {t("common.login")}
                   </Link>
                   <Link
-                    to="/login"
+                    to="/register"
                     className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-primary to-accent text-white text-sm font-display font-semibold hover:shadow-glow-sm transition-all cursor-pointer"
                   >
-                    Get Started
+                    Sign Up
                   </Link>
                 </div>
               )}
@@ -122,9 +120,7 @@ const LandingNav = () => {
                 </Link>
               ))}
               <div className="border-t border-white/[0.04] my-2" />
-              <div className="flex items-center gap-2 px-4 pt-2">
-                <LanguageToggle />
-              </div>
+
               {!isAuthenticated && (
                 <div className="flex items-center gap-2 pt-2">
                   <Link
@@ -135,11 +131,11 @@ const LandingNav = () => {
                     {t("common.login")}
                   </Link>
                   <Link
-                    to="/login"
+                    to="/register"
                     onClick={() => setMobileOpen(false)}
                     className="flex-1 text-center px-4 py-2.5 rounded-xl bg-gradient-to-r from-primary to-accent text-white text-sm font-display font-semibold cursor-pointer"
                   >
-                    Get Started
+                    Sign Up
                   </Link>
                 </div>
               )}

@@ -44,12 +44,12 @@ logger = logging.getLogger(__name__)
 # literature, assuming adult speakers, conversational register).
 # ---------------------------------------------------------------------------
 HUMAN_NORMS = {
-    "jitter_local": (0.005, 0.050),       # 0.5% – 5.0%
-    "jitter_rap": (0.002, 0.030),          # relative average perturbation
-    "shimmer_local": (0.015, 0.100),       # 1.5% – 10%
-    "shimmer_apq": (0.010, 0.080),         # amplitude perturbation quotient
-    "hnr_mean": (8.0, 25.0),              # dB; below 8 = very breathy
-    "f0_cv": (0.10, 0.50),                # coefficient of variation of F0
+    "jitter_local": (0.008, 0.050),       # 0.8% – 5.0% (Tightened lower bound for AI)
+    "jitter_rap": (0.004, 0.030),          # relative average perturbation
+    "shimmer_local": (0.020, 0.100),       # 2.0% – 10%
+    "shimmer_apq": (0.015, 0.080),         # amplitude perturbation quotient
+    "hnr_mean": (8.0, 22.0),              # dB; overly high is AI
+    "f0_cv": (0.15, 0.50),                # coefficient of variation of F0
     "speech_rate": (2.5, 6.5),             # syllables per second
     "pause_rate": (0.10, 0.60),            # pauses per second of speech
     "pause_duration_mean": (0.15, 0.80),   # seconds
@@ -679,7 +679,7 @@ class ProsodicAnalyzer:
 
         # Pause regularity: zero std with non-zero mean -> robotic pauses
         ps = features.get("pause_duration_std", 0.0)
-        if pr > 0 and pm > 0 and ps < 0.02:
+        if pr > 0 and pm > 0 and ps < 0.05:
             anomalies.append("too_uniform_pauses")
 
         return anomalies

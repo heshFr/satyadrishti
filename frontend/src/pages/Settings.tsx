@@ -157,7 +157,7 @@ const SettingsPage = () => {
     window.dispatchEvent(new StorageEvent("storage", { key: "satya-font-size" }));
   }, [fontSize]);
 
-  const show = (s: Section) => activeSection === "profile" || activeSection === s;
+  const show = (s: Section) => activeSection === s;
   const inputCls = "w-full bg-surface-container-low border-b border-outline-variant focus:border-primary-fixed focus:ring-0 text-on-surface py-2 outline-none transition-all";
 
   return (
@@ -361,12 +361,12 @@ const SettingsPage = () => {
                               <input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} placeholder="Current password" className={inputCls} />
                               <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="New password (min 8 chars)" className={inputCls} />
                               <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Confirm new password" className={inputCls} />
-                              <button onClick={handlePasswordChange} disabled={!currentPassword || !newPassword || changingPassword}
+                              <button onClick={handlePasswordChange} disabled={!currentPassword || !newPassword || changingPassword || !isAuthenticated}
                                 className="btn-sentinel px-4 py-2 rounded-lg text-xs disabled:opacity-40">
                                 {changingPassword ? "Updating..." : "Update Password"}
                               </button>
                               {!isAuthenticated && (
-                                <p className="text-xs text-error">Sign in to change your password</p>
+                                <p className="text-xs text-error font-bold mt-2">You must sign in to use this function.</p>
                               )}
                             </div>
                           </motion.div>
@@ -488,9 +488,19 @@ const SettingsPage = () => {
                     <h3 className="font-headline font-bold text-lg tracking-tight">Scan & Analysis History</h3>
                   </div>
                   <div className="text-center py-12 space-y-4">
-                    <MaterialIcon icon="folder_open" className="text-on-surface-variant/30" size={48} />
-                    <p className="text-on-surface-variant">Your scan history will appear here.</p>
-                    <p className="text-xs text-on-surface-variant/50">All past scanner results and call protection logs will be shown in this section.</p>
+                    {isAuthenticated ? (
+                      <>
+                        <MaterialIcon icon="folder_open" className="text-on-surface-variant/30" size={48} />
+                        <p className="text-on-surface-variant">Your scan history will appear here.</p>
+                        <p className="text-xs text-on-surface-variant/50">All past scanner results and call protection logs will be shown in this section.</p>
+                      </>
+                    ) : (
+                      <>
+                        <MaterialIcon icon="lock" className="text-error/60" size={48} />
+                        <p className="text-error font-bold text-lg">Sign in required</p>
+                        <p className="text-xs text-on-surface-variant">You must sign in to save and view your scan and analysis history.</p>
+                      </>
+                    )}
                     <Link to="/scanner" className="inline-flex items-center gap-2 px-6 py-3 bg-primary/10 text-primary rounded-xl text-sm font-bold hover:bg-primary/20 transition-colors">
                       <MaterialIcon icon="image_search" size={18} />
                       Start a New Scan
@@ -549,6 +559,24 @@ const SettingsPage = () => {
                       </motion.div>
                     )}
                   </AnimatePresence>
+                  
+                  {/* Voice Enrollment Link */}
+                  <div className="mt-8 pt-8 border-t border-outline-variant/15 space-y-4">
+                    <div className="flex items-center gap-3">
+                      <MaterialIcon icon="record_voice_over" className="text-secondary" size={24} />
+                      <h3 className="font-headline font-bold text-lg tracking-tight">Voice Enrollment</h3>
+                    </div>
+                    <p className="text-sm text-on-surface-variant max-w-2xl">
+                      Enroll biometric voice prints for your family members to verify caller identity and detect deepfakes in real-time.
+                    </p>
+                    <Link
+                      to="/voice-enroll"
+                      className="inline-flex items-center gap-2 px-6 py-3 bg-secondary/10 text-secondary rounded-xl text-sm font-bold hover:bg-secondary/20 transition-colors cursor-pointer"
+                    >
+                      <MaterialIcon icon="settings_voice" size={18} />
+                      Manage Voice Prints
+                    </Link>
+                  </div>
                 </div>
               )}
             </div>

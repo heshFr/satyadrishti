@@ -46,6 +46,25 @@ export interface CallProtectionState {
   speakerMatch: string | null;
   speakerVerified: boolean;
   speakerSimilarity: number;
+  biologicalVeto: boolean;
+  vetoReason: string | null;
+  guardrails: { biological_veto: boolean; confidence_threshold_check: boolean; human_review_required: boolean } | null;
+  edgeCaseHandling: {
+    low_signal: string;
+    noise_detected: boolean;
+    confidence_adjusted: boolean;
+  } | null;
+  decisionPayload: {
+    decision: string;
+    confidence: number;
+    guardrail_triggered: boolean;
+    guardrail_type: string;
+    explanation: {
+      primary_reason: string;
+      supporting_layers: string[];
+    };
+    audit: any;
+  } | null;
 }
 
 const DEFAULT_MODALITY: ModalityResult = {
@@ -78,6 +97,11 @@ const INITIAL_STATE: CallProtectionState = {
   speakerMatch: null,
   speakerVerified: false,
   speakerSimilarity: 0,
+  biologicalVeto: false,
+  vetoReason: null,
+  guardrails: null,
+  edgeCaseHandling: null,
+  decisionPayload: null,
 };
 
 import { WS_BASE } from "@/lib/api";
@@ -125,7 +149,7 @@ function encodeWAV(samples: Float32Array, sampleRate: number): string {
 
 /**
  * Real-time call protection hook.
- * Captures system audio + microphone, sends WAV chunks to backend,
+ * Captures system audio + microphone via AudioWorklet, sends WAV chunks to backend,
  * provides real frequency/waveform data for visualization.
  */
 export function useCallProtection() {
@@ -136,15 +160,20 @@ export function useCallProtection() {
   const systemStreamRef = useRef<MediaStream | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
-  const recorderNodeRef = useRef<ScriptProcessorNode | null>(null);
+  const workletNodeRef = useRef<AudioWorkletNode | null>(null);
   const levelAnimRef = useRef<number | null>(null);
   const pingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const audioBufferRef = useRef<Float32Array[]>([]);
   const sendIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const screenVideoRef = useRef<MediaStreamTrack | null>(null);
   const frameIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Guard to prevent concurrent startProtection calls
+  const startingRef = useRef(false);
 
   const cleanup = useCallback(() => {
+    // Reset the starting guard
+    startingRef.current = false;
+
     if (levelAnimRef.current) {
       cancelAnimationFrame(levelAnimRef.current);
       levelAnimRef.current = null;
@@ -161,9 +190,9 @@ export function useCallProtection() {
       clearInterval(pingIntervalRef.current);
       pingIntervalRef.current = null;
     }
-    if (recorderNodeRef.current) {
-      recorderNodeRef.current.disconnect();
-      recorderNodeRef.current = null;
+    if (workletNodeRef.current) {
+      workletNodeRef.current.disconnect();
+      workletNodeRef.current = null;
     }
     if (micStreamRef.current) {
       micStreamRef.current.getTracks().forEach((t) => t.stop());
@@ -235,17 +264,57 @@ export function useCallProtection() {
         if (data.modality === "audio") {
           const confidence = (data.confidence as number) ?? 0;
           const isSynthetic = (data.is_synthetic as boolean) ?? false;
+          const biologicalVeto = (data.biological_veto as boolean) ?? false;
+          const vetoReason = (data.veto_reason as string) ?? null;
 
-          next.audio = {
-            status: isSynthetic ? "danger" : "safe",
-            confidence,
-            verdict: isSynthetic
-              ? `Synthetic Voice (${confidence.toFixed(1)}%)`
-              : `Verified (${confidence.toFixed(1)}%)`,
-          };
+          // If biological veto triggered, force critical state
+          if (biologicalVeto) {
+            next.biologicalVeto = true;
+            next.vetoReason = vetoReason;
+            next.audio = {
+              status: "danger",
+              confidence: Math.max(confidence, 95),
+              verdict: vetoReason || "Biological Impossibility Detected",
+            };
+            next.callState = "critical";
 
-          if (isSynthetic && confidence > 60) {
-            next.callState = "danger";
+            // Add veto to transcript
+            next.transcript = [
+              ...prev.transcript,
+              {
+                time: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+                text: `🚨 BIOLOGICAL VETO: ${vetoReason || "AI voice clone detected — physiological impossibility"}`,
+                flagged: true,
+                verdict: "biological_veto",
+              },
+            ].slice(-20);
+          } else {
+            next.audio = {
+              status: isSynthetic ? "danger" : (data.status_text === "Partially Consistent" ? "warning" : "safe"),
+              confidence,
+              verdict: data.status_text === "Partially Consistent" 
+                ? "Partially Consistent"
+                : (isSynthetic
+                  ? `Synthetic Voice (${confidence.toFixed(1)}%)`
+                  : `Verified (${confidence.toFixed(1)}%)`),
+            };
+
+            if (isSynthetic && confidence > 60) {
+              next.callState = "danger";
+            }
+          }
+
+          // Update guardrails if provided
+          if (data.guardrails) {
+            next.guardrails = data.guardrails as any;
+          }
+
+          if (data.edge_case_handling) {
+            next.edgeCaseHandling = data.edge_case_handling as any;
+          }
+
+          if (data.decision_payload) {
+            next.decisionPayload = data.decision_payload as any;
           }
         }
 
@@ -448,7 +517,18 @@ export function useCallProtection() {
   }, []);
 
   const startProtection = useCallback(async () => {
-    setState((prev) => ({ ...prev, error: null, callSummary: null }));
+    // ── CRITICAL: Re-entry guard ──
+    // Prevents stacked getDisplayMedia sessions when clicking multiple times
+    if (startingRef.current || state.isActive) {
+      console.warn("[CallProtection] Already starting or active — ignoring duplicate click");
+      return;
+    }
+    startingRef.current = true;
+
+    // Clean up any previous session before starting fresh
+    cleanup();
+
+    setState((prev) => ({ ...prev, error: null, callSummary: null, biologicalVeto: false, vetoReason: null }));
 
     try {
       // ── Step 1: Capture microphone ──
@@ -496,6 +576,7 @@ export function useCallProtection() {
         // User cancelled screen share — abort: stop mic and do NOT start protection
         micStream.getTracks().forEach((t) => t.stop());
         micStreamRef.current = null;
+        startingRef.current = false;
         return;
       }
 
@@ -522,18 +603,34 @@ export function useCallProtection() {
         micSource.connect(analyser);
       }
 
-      // ── Step 4: Record audio as raw PCM for WAV encoding ──
-      const bufferSize = 4096;
-      const recorder = audioCtx.createScriptProcessor(bufferSize, 1, 1);
-      recorderNodeRef.current = recorder;
+      // ── Step 4: Record audio via AudioWorklet (replaces deprecated ScriptProcessorNode) ──
+      try {
+        await audioCtx.audioWorklet.addModule("/pcm-processor.js");
+        const workletNode = new AudioWorkletNode(audioCtx, "pcm-processor");
+        workletNodeRef.current = workletNode;
 
-      recorder.onaudioprocess = (e: AudioProcessingEvent) => {
-        const channelData = e.inputBuffer.getChannelData(0);
-        audioBufferRef.current.push(new Float32Array(channelData));
-      };
+        workletNode.port.onmessage = (e: MessageEvent) => {
+          if (e.data?.type === "pcm" && e.data.samples) {
+            audioBufferRef.current.push(new Float32Array(e.data.samples));
+          }
+        };
 
-      analyser.connect(recorder);
-      recorder.connect(audioCtx.destination);
+        analyser.connect(workletNode);
+        workletNode.connect(audioCtx.destination);
+      } catch (workletErr) {
+        // Fallback to ScriptProcessorNode if AudioWorklet fails
+        console.warn("[CallProtection] AudioWorklet failed, falling back to ScriptProcessorNode:", workletErr);
+        const bufferSize = 4096;
+        const recorder = audioCtx.createScriptProcessor(bufferSize, 1, 1);
+
+        recorder.onaudioprocess = (e: AudioProcessingEvent) => {
+          const channelData = e.inputBuffer.getChannelData(0);
+          audioBufferRef.current.push(new Float32Array(channelData));
+        };
+
+        analyser.connect(recorder);
+        recorder.connect(audioCtx.destination);
+      }
 
       // ── Step 5: Start visualization ──
       startVisualization(analyser);
@@ -543,6 +640,9 @@ export function useCallProtection() {
       wsRef.current = ws;
 
       ws.onopen = () => {
+        // Release the starting guard now that we're fully connected
+        startingRef.current = false;
+
         setState((prev) => ({
           ...prev,
           isActive: true,
@@ -558,6 +658,10 @@ export function useCallProtection() {
           alertMessage: null,
           callSummary: null,
           language: null,
+          biologicalVeto: false,
+          vetoReason: null,
+          guardrails: null,
+          edgeCaseHandling: null,
         }));
 
         ws.send(JSON.stringify({ type: "call_start" }));
@@ -594,7 +698,8 @@ export function useCallProtection() {
         setState((prev) => ({ ...prev, isConnected: false }));
       };
 
-      // ── Step 7: Send audio chunks every 3 seconds as WAV ──
+      // ── Step 7: Send audio chunks every 5 seconds as WAV ──
+      // (Increased from 3s to 5s to give biological analyzers enough data)
       sendIntervalRef.current = setInterval(() => {
         if (ws.readyState !== WebSocket.OPEN) return;
         if (audioBufferRef.current.length === 0) return;
@@ -609,14 +714,14 @@ export function useCallProtection() {
         }
         audioBufferRef.current = [];
 
-        // Skip silence
+        // Skip silence (lowered threshold to catch faint tab audio)
         const rms = Math.sqrt(combined.reduce((sum, v) => sum + v * v, 0) / combined.length);
-        if (rms < 0.01) return;
+        if (rms < 0.005) return;
 
         // Encode as WAV and send
         const wavBase64 = encodeWAV(combined, sampleRate);
         ws.send(JSON.stringify({ type: "audio", data: wavBase64 }));
-      }, 3000);
+      }, 5000);
 
       // ── Step 8: Send screen frames for video deepfake detection (every 5s) ──
       if (hasScreenVideo && screenVideoRef.current) {
@@ -660,7 +765,7 @@ export function useCallProtection() {
       setState((prev) => ({ ...prev, error: message }));
       cleanup();
     }
-  }, [cleanup, startVisualization, handleWSMessage, handleCallSummary]);
+  }, [cleanup, startVisualization, handleWSMessage, handleCallSummary, state.isActive]);
 
   const stopProtection = useCallback(() => {
     const ws = wsRef.current;
@@ -684,6 +789,10 @@ export function useCallProtection() {
           frequencyData: null,
           waveformData: null,
           error: null,
+          biologicalVeto: false,
+          vetoReason: null,
+          guardrails: null,
+          edgeCaseHandling: null,
         }));
       }, 1500);
 
@@ -709,6 +818,10 @@ export function useCallProtection() {
               frequencyData: null,
               waveformData: null,
               error: null,
+              biologicalVeto: false,
+              vetoReason: null,
+              guardrails: null,
+              edgeCaseHandling: null,
             }));
           }
         } catch {
@@ -728,7 +841,7 @@ export function useCallProtection() {
   }, []);
 
   const dismissDanger = useCallback(() => {
-    setState((prev) => ({ ...prev, callState: "safe", alertLevel: "safe", alertMessage: null, threatEscalation: 0 }));
+    setState((prev) => ({ ...prev, callState: "safe", alertLevel: "safe", alertMessage: null, threatEscalation: 0, biologicalVeto: false, vetoReason: null }));
   }, []);
 
   const dismissAlert = useCallback(() => {
@@ -743,5 +856,6 @@ export function useCallProtection() {
     analyzeText,
     dismissDanger,
     dismissAlert,
+    systemStreamRef,
   };
 }

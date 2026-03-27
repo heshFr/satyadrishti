@@ -16,11 +16,16 @@ const SettingsPage = lazy(() => import("./pages/Settings"));
 const Advanced = lazy(() => import("./pages/Advanced"));
 const Login = lazy(() => import("./pages/Login"));
 const Register = lazy(() => import("./pages/Register"));
+const Hub = lazy(() => import("./pages/Hub"));
 const Help = lazy(() => import("./pages/Help"));
 const Contact = lazy(() => import("./pages/Contact"));
 const Profile = lazy(() => import("./pages/Profile"));
 const VoiceEnroll = lazy(() => import("./pages/VoiceEnroll"));
 const Privacy = lazy(() => import("./pages/Privacy"));
+const Terms = lazy(() => import("./pages/Terms"));
+const SecurityProtocol = lazy(() => import("./pages/SecurityProtocol"));
+const About = lazy(() => import("./pages/About"));
+const LiveDemo = lazy(() => import("./pages/LiveDemo"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -88,18 +93,58 @@ function App() {
             <Routes>
               {/* Public routes */}
               <Route path="/" element={<Landing />} />
-              <Route path="/scanner" element={<Scanner />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              <Route path="/hub" element={<Hub />} />
               <Route path="/help" element={<Help />} />
               <Route path="/contact" element={<Contact />} />
               <Route path="/privacy" element={<Privacy />} />
+              <Route path="/terms" element={<Terms />} />
+              <Route path="/security" element={<SecurityProtocol />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/live-demo" element={<LiveDemo />} />
 
-              {/* Auth-optional routes */}
-              <Route path="/call-protection" element={<CallProtection />} />
-              <Route path="/settings" element={<SettingsPage />} />
-              <Route path="/advanced" element={<Advanced />} />
-              <Route path="/voice-prints" element={<VoiceEnroll />} />
+              {/* Partially Public / Auth-required routes */}
+              <Route
+                path="/scanner"
+                element={
+                  <ProtectedRoute requireAuth={false}>
+                    <Scanner />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/call-protection"
+                element={
+                  <ProtectedRoute requireAuth={false}>
+                    <CallProtection />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/settings"
+                element={
+                  <ProtectedRoute requireAuth={false}>
+                    <SettingsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/advanced"
+                element={
+                  <ProtectedRoute requireAuth>
+                    <Advanced />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/voice-prints"
+                element={
+                  <ProtectedRoute requireAuth>
+                    <VoiceEnroll />
+                  </ProtectedRoute>
+                }
+              />
 
               {/* Auth-required routes */}
               <Route

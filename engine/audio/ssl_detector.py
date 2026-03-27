@@ -51,10 +51,11 @@ except ImportError:
 # ── Known norms for real speech in XLS-R feature space ──
 # Derived from literature on SSL representations of natural speech.
 # These serve as reference anchors; scores measure deviation from them.
+# Bounds natively relaxed to accommodate highly-compressed telephony codecs (e.g. OPUS)
 REAL_SPEECH_NORMS = {
     # Temporal: frame-to-frame cosine similarity between consecutive hidden states
-    "temporal_similarity_mean": (0.88, 0.96),   # (low, high) for real speech
-    "temporal_similarity_std": (0.015, 0.06),    # real speech has moderate variation
+    "temporal_similarity_mean": (0.85, 0.975),  # Relaxed upper bound for telephony 
+    "temporal_similarity_std": (0.010, 0.06),   # Lowered bound to tolerate codec smoothing
 
     # Kurtosis of hidden state activations (across embedding dims)
     "activation_kurtosis": (2.0, 6.0),           # real speech: meso- to leptokurtic
@@ -66,7 +67,7 @@ REAL_SPEECH_NORMS = {
     "cross_layer_similarity": (0.3, 0.75),        # real speech: moderate divergence
 
     # Entropy of attention-like features (cosine similarity matrix)
-    "frame_diversity": (0.6, 0.95),               # real speech: diverse frame representations
+    "frame_diversity": (0.4, 0.95),               # Re-calibrated for phone lines
 }
 
 

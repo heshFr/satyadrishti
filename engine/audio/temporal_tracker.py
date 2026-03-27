@@ -43,11 +43,11 @@ class TemporalTracker:
 
     # --- Thresholds ---
     NATURAL_SIM_LOW = 0.85
-    NATURAL_SIM_HIGH = 0.98
+    NATURAL_SIM_HIGH = 0.97
     NATURAL_VAR_LOW = 0.001
     NATURAL_VAR_HIGH = 0.01
     SUDDEN_CHANGE_THRESHOLD = 0.2  # cosine sim drop triggering a "sudden change"
-    TOO_STABLE_SIM = 0.99
+    TOO_STABLE_SIM = 0.985
     TOO_STABLE_VAR = 0.001
     MIN_CONFIDENCE_CHUNKS = 5  # minimum chunks before confidence is reasonable
 

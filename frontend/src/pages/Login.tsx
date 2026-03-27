@@ -255,7 +255,7 @@ const Login = () => {
   const { login, register, startOAuth, verify2FA } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const redirect = searchParams.get("redirect") || "/call-protection";
+  const redirect = searchParams.get("redirect") || "/dashboard";
 
   // ── Auth State ──
   const [mode, setMode] = useState<AuthMode>("login");
@@ -264,6 +264,7 @@ const Login = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [rememberDevice, setRememberDevice] = useState(() => {
@@ -286,6 +287,7 @@ const Login = () => {
   const [resetCode, setResetCode] = useState("");
   const [newResetPassword, setNewResetPassword] = useState("");
   const [confirmResetPassword, setConfirmResetPassword] = useState("");
+  const [showConfirmResetPassword, setShowConfirmResetPassword] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
   const [devResetCode, setDevResetCode] = useState("");
 
@@ -702,7 +704,7 @@ const Login = () => {
                         : "text-on-surface-variant hover:text-on-surface"
                     }`}
                   >
-                    {tab === "login" ? "Login" : "Sign Up"}
+                    {tab === "login" ? "Sign In" : "Register"}
                   </button>
                 ))}
               </div>
@@ -883,13 +885,22 @@ const Login = () => {
                   />
                   <UnderlineInput
                     label="Confirm Passphrase"
-                    type="password"
+                    type={showConfirmPassword ? "text" : "password"}
                     value={confirmPassword}
                     onChange={setConfirmPassword}
                     placeholder="Re-enter passphrase"
                     icon="lock"
                     required
                     autoComplete="new-password"
+                    rightElement={
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="text-outline hover:text-primary transition-colors cursor-pointer p-1"
+                      >
+                        <MaterialIcon icon={showConfirmPassword ? "visibility_off" : "visibility"} size={18} />
+                      </button>
+                    }
                   />
 
                   {/* Password strength meter */}
@@ -1175,13 +1186,22 @@ const Login = () => {
 
                   <UnderlineInput
                     label="Confirm New Password"
-                    type="password"
+                    type={showConfirmResetPassword ? "text" : "password"}
                     value={confirmResetPassword}
                     onChange={setConfirmResetPassword}
                     placeholder="Re-enter password"
                     icon="lock"
                     required
                     autoComplete="new-password"
+                    rightElement={
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmResetPassword(!showConfirmResetPassword)}
+                        className="text-outline hover:text-primary transition-colors cursor-pointer p-1"
+                      >
+                        <MaterialIcon icon={showConfirmResetPassword ? "visibility_off" : "visibility"} size={18} />
+                      </button>
+                    }
                   />
 
                   <PasswordStrengthMeter password={newResetPassword} />
@@ -1242,7 +1262,7 @@ const Login = () => {
             {(mode === "login" || mode === "register") && (
               <div className="mt-6 text-center">
                 <Link
-                  to="/scanner"
+                  to="/hub"
                   className="text-[10px] text-outline hover:text-primary transition-colors cursor-pointer font-label uppercase tracking-[0.2em]"
                 >
                   Continue without account →
@@ -1253,14 +1273,18 @@ const Login = () => {
 
           {/* ═══ Footer Links ═══ */}
           <div className="mt-8 flex items-center justify-center gap-6 flex-wrap">
-            {["Privacy Policy", "Security Protocol", "Terms of Service"].map((link) => (
-              <button
-                key={link}
-                type="button"
+            {[
+              { label: "Privacy Policy", path: "/privacy" },
+              { label: "Security Protocol", path: "/security" },
+              { label: "Terms of Service", path: "/terms" }
+            ].map(({ label, path }) => (
+              <Link
+                key={label}
+                to={path}
                 className="text-[9px] font-label uppercase tracking-[0.15em] text-outline hover:text-on-surface-variant transition-colors cursor-pointer"
               >
-                {link}
-              </button>
+                {label}
+              </Link>
             ))}
           </div>
 

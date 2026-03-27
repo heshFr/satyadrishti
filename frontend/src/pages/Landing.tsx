@@ -1,10 +1,13 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { motion, useInView } from "framer-motion";
+import { motion, useInView, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import Footer from "@/components/Footer";
 import MaterialIcon from "@/components/MaterialIcon";
 import { useRef, useState, useEffect } from "react";
+import LandingNav from "@/components/LandingNav";
+import LanguageDropdown from "@/components/LanguageDropdown";
+import TopBar from "@/components/TopBar";
 
 /* ── Stagger animations ── */
 const stagger = {
@@ -57,43 +60,7 @@ const Landing = () => {
   return (
     <div className="min-h-screen bg-surface text-on-surface font-body selection:bg-primary/30 selection:text-primary-container">
       {/* ── TopNavBar (Landing variant) ── */}
-      <nav className={`fixed top-0 w-full z-50 transition-all duration-300 ${scrolled ? "bg-surface/80 backdrop-blur-xl shadow-ambient" : "bg-transparent"}`}>
-        <div className="flex justify-between items-center max-w-7xl mx-auto px-12 py-6">
-          <Link to="/" className="text-2xl font-black tracking-tighter text-on-surface font-headline">
-            Satya Drishti
-          </Link>
-          <div className="hidden md:flex gap-10 items-center">
-            <a href="#features" className="text-on-surface-variant hover:text-on-surface transition-colors duration-300 font-headline tracking-tight font-bold text-sm uppercase">
-              Platform
-            </a>
-            <Link to="/scanner" className="text-on-surface-variant hover:text-on-surface transition-colors duration-300 font-headline tracking-tight font-bold text-sm uppercase">
-              Scanner
-            </Link>
-            <Link to="/call-protection" className="text-on-surface-variant hover:text-on-surface transition-colors duration-300 font-headline tracking-tight font-bold text-sm uppercase">
-              Protection
-            </Link>
-            <Link to="/help" className="text-on-surface-variant hover:text-on-surface transition-colors duration-300 font-headline tracking-tight font-bold text-sm uppercase">
-              Support
-            </Link>
-          </div>
-          <div className="flex gap-6 items-center">
-            {isAuthenticated ? (
-              <Link to="/call-protection" className="btn-sentinel px-6 py-2 rounded-lg text-sm">
-                Call Protection
-              </Link>
-            ) : (
-              <>
-                <Link to="/login" className="text-on-surface-variant hover:text-on-surface font-headline tracking-tight font-bold text-sm uppercase transition-all">
-                  {t("common.login")}
-                </Link>
-                <Link to="/login" className="bg-gradient-to-br from-primary to-primary-container text-on-primary px-6 py-2 rounded-lg font-headline tracking-tight font-bold text-sm uppercase transition-transform active:scale-95">
-                  Get Started
-                </Link>
-              </>
-            )}
-          </div>
-        </div>
-      </nav>
+      <TopBar systemStatus="protected" />
 
       <main className="pt-32 relative">
         {/* Global continuous background */}
@@ -103,8 +70,20 @@ const Landing = () => {
         </div>
 
         {/* ── Hero Section ── */}
-        <section className="relative px-12 py-24 overflow-hidden">
-          <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center gap-16 relative z-10">
+        <section 
+          className="relative px-12 py-24 overflow-hidden min-h-[90vh] flex items-center"
+        >
+          {/* BACKGROUND IMAGE WITH ZOOM */}
+          <div 
+            className="absolute inset-0 bg-cover bg-center animate-subtle-zoom z-0"
+            style={{ backgroundImage: "url('/LandingBackground.png')" }}
+          />
+
+          {/* CINEMATIC OVERLAY */}
+          <div className="absolute inset-0 bg-gradient-to-r from-surface via-surface/90 to-transparent z-10"></div>
+          <div className="absolute inset-0 bg-gradient-to-t from-surface via-transparent to-transparent z-10 opacity-60"></div>
+
+          <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center gap-16 relative z-20 w-full">
             <motion.div
               className="w-full md:w-1/2 space-y-8"
               variants={stagger.container}
@@ -113,52 +92,75 @@ const Landing = () => {
             >
               <motion.div variants={stagger.item} className="inline-flex items-center gap-2 px-4 py-2 rounded-[0.75rem] bg-surface-container-high border border-outline-variant/15">
                 <span className="w-2 h-2 rounded-full bg-secondary shadow-[0_0_10px_rgba(78,222,163,0.5)]" />
-                <span className="text-xs font-label tracking-widest uppercase text-on-surface-variant">Real-time threat monitoring active</span>
+                <span className="text-xs font-label tracking-widest uppercase text-on-surface-variant">{t("landing.badge")}</span>
               </motion.div>
 
               <motion.h1 variants={stagger.item} className="text-5xl md:text-7xl font-headline font-extrabold tracking-tighter leading-none text-on-surface">
-                <span className="text-6xl md:text-8xl">Satya Drishti</span><br /><span className="text-primary-container text-3xl md:text-4xl font-bold">The Truth, Authenticated.</span>
+                <span className="text-7xl md:text-[8.5rem] leading-[0.9]">{t("landing.heroTitle")}</span><br />
+                <span className="text-primary-container text-2xl md:text-4xl font-medium tracking-wide mt-4 block">{t("landing.heroSubtitle")}</span>
               </motion.h1>
 
-              <motion.p variants={stagger.item} className="text-xl text-on-surface-variant font-body leading-relaxed max-w-lg">
-                In an era of synthetic deception, Satya Drishti serves as your digital curator. We detect deepfakes, voice clones, and scams with 99.9% precision before they reach your network.
+              <motion.p variants={stagger.item} className="text-2xl md:text-2xl text-on-surface-variant font-body leading-relaxed max-w-4xl font-light">
+                {t("landing.heroDescription")} <strong className="text-on-surface font-headline font-bold">{t("landing.heroDescBold")}</strong> {t("landing.heroDescEnd")}
               </motion.p>
 
-              <motion.div variants={stagger.item} className="flex flex-wrap gap-6 pt-4">
+              <motion.div variants={stagger.item} className="flex flex-wrap gap-6 pt-8">
                 <Link
-                  to={isAuthenticated ? "/call-protection" : "/login"}
-                  className="px-10 py-5 bg-gradient-to-br from-primary to-primary-container text-on-primary font-headline font-bold uppercase tracking-tight rounded-xl shadow-2xl hover:brightness-110 transition-all"
+                  to="/hub"
+                  className="group relative px-10 py-5 bg-gradient-to-br from-primary to-primary-container text-on-primary font-headline font-black uppercase tracking-widest rounded-2xl shadow-[0_0_40px_rgba(0,209,255,0.3)] hover:shadow-[0_0_60px_rgba(0,209,255,0.5)] hover:-translate-y-1 transition-all text-lg overflow-hidden active:scale-95"
                 >
-                  Start Protecting Your Family
+                  <div className="absolute inset-0 bg-white/20 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]" />
+                  <span className="relative z-10 flex items-center gap-3">
+                    {t("common.getProtected")}
+                    <MaterialIcon icon="arrow_forward" />
+                  </span>
+                </Link>
+
+                <Link
+                  to="/live-demo"
+                  className="group px-10 py-5 bg-white/5 border border-white/10 text-on-surface font-headline font-black uppercase tracking-widest rounded-2xl hover:bg-white/10 hover:border-white/20 hover:-translate-y-1 transition-all text-lg flex items-center gap-3 active:scale-95"
+                >
+                  <MaterialIcon icon="play_circle" size={28} className="text-secondary group-hover:scale-110 transition-transform" />
+                  {t("common.watchLiveDemo")}
                 </Link>
               </motion.div>
             </motion.div>
 
-            {/* Hero visual — logo with orbiting elements */}
+            {/* Hero visual — 3-layer logo with orbiting rings */}
             <motion.div
               className="w-full md:w-1/2 relative flex items-center justify-center"
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.8, delay: 0.3 }}
             >
-              <div className="relative w-[420px] h-[420px] flex items-center justify-center">
-                {/* Glow behind */}
-                <div className="absolute inset-0 bg-primary/8 rounded-3xl blur-[80px]" />
+              <div className="relative w-80 h-80 md:w-[480px] md:h-[480px] lg:w-[480px] lg:h-[480px] flex items-center justify-center">
+                
+                {/* AMBIENT GLOW */}
+                <div className="absolute inset-[-40px] bg-primary/10 rounded-full blur-[100px] animate-pulse" />
 
-                {/* Logo fills the square */}
+                {/* ORBITAL RINGS */}
+                <div className="absolute inset-[-30px] rounded-full border border-primary/20 animate-spin-slow opacity-40">
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-4 h-4 bg-primary rounded-full blur-[5px]" />
+                </div>
+                <div className="absolute inset-[-60px] rounded-full border border-secondary/10 animate-spin-slow-reverse opacity-30">
+                  <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-3 h-3 bg-secondary rounded-full blur-[4px]" />
+                </div>
+
+                {/* SCANNING LINE CONTAINER */}
+                <div className="absolute inset-0 overflow-hidden rounded-2xl z-10 pointer-events-none">
+                  <div className="scan-line"></div>
+                </div>
+
+                {/* LOGO */}
                 <img
                   src="/logo.png"
-                  alt="Satya Drishti"
-                  className="relative z-10 w-full h-full object-contain rounded-2xl drop-shadow-[0_0_40px_rgba(0,209,255,0.4)]"
+                  alt="Satya Drishti Logo"
+                  className="relative z-7 w-full h-full object-contain rounded-2xl drop-shadow-[0_0_60px_rgba(0,209,255,0.5)] animate-float"
                 />
 
-                {/* Orbital elements around the image */}
-                <div className="absolute inset-[-20px] animate-spin-orbit">
-                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-4 h-4 bg-secondary rounded-full shadow-[0_0_15px_rgba(78,222,163,0.6)]" />
-                </div>
-                <div className="absolute inset-[-30px] animate-spin-orbit-reverse">
-                  <div className="absolute bottom-0 right-1/2 translate-x-1/2 w-3 h-3 bg-primary rounded-full shadow-[0_0_15px_rgba(0,209,255,0.6)]" />
-                </div>
+                {/* Particles */}
+                <div className="absolute w-2 h-2 bg-cyan-400 rounded-full top-20 left-10 animate-ping opacity-60 z-30"></div>
+                <div className="absolute w-2 h-2 bg-emerald-400 rounded-full bottom-20 right-10 animate-ping delay-500 opacity-60 z-30"></div>
               </div>
             </motion.div>
           </div>
@@ -173,26 +175,34 @@ const Landing = () => {
         {/* ── Stats Section ── */}
         <section className="px-12 py-24 relative z-10">
           <div className="absolute inset-0 section-glow-cyan pointer-events-none" />
-          <div className="max-w-7xl mx-auto">
+          <motion.div 
+            className="max-w-7xl mx-auto"
+            initial="initial"
+            whileInView="animate"
+            viewport={{ once: true, margin: "-100px" }}
+            variants={stagger.container}
+          >
             <div className="grid grid-cols-1 md:grid-cols-3 gap-20">
-              <div className="space-y-4 border-l border-outline-variant/15 pl-8">
-                <div className="text-5xl font-headline font-black text-on-surface tracking-tighter">
-                  $<AnimatedCounter target={10} suffix="B+" />
+              <motion.div variants={stagger.item} className="space-y-4 border-l border-outline-variant/15 pl-8">
+                <div className="text-6xl md:text-7xl font-headline font-black text-on-surface tracking-tighter">
+                  ₹<AnimatedCounter target={1947} suffix="Cr" />
                 </div>
-                <p className="text-on-surface-variant uppercase tracking-widest text-xs font-label">Lost Annually to Deepfakes</p>
-              </div>
-              <div className="space-y-4 border-l border-outline-variant/15 pl-8">
-                <div className="text-5xl font-headline font-black text-secondary tracking-tighter">
-                  <AnimatedCounter target={98} suffix="%" />
+                <p className="text-on-surface-variant uppercase tracking-widest text-sm md:text-base font-label">{t("landing.statFraud")}</p>
+              </motion.div>
+              <motion.div variants={stagger.item} className="space-y-4 border-l border-outline-variant/15 pl-8">
+                <div className="text-6xl md:text-7xl font-headline font-black text-secondary tracking-tighter">
+                  <AnimatedCounter target={500} suffix="%" />
                 </div>
-                <p className="text-on-surface-variant uppercase tracking-widest text-xs font-label">Increase in Voice Cloning Fraud</p>
-              </div>
-              <div className="space-y-4 border-l border-outline-variant/15 pl-8">
-                <div className="text-5xl font-headline font-black text-primary-container tracking-tighter">0.3s</div>
-                <p className="text-on-surface-variant uppercase tracking-widest text-xs font-label">Real-time Detection Latency</p>
-              </div>
+                <p className="text-on-surface-variant uppercase tracking-widest text-sm md:text-base font-label">{t("landing.statVoiceClone")}</p>
+              </motion.div>
+              <motion.div variants={stagger.item} className="space-y-4 border-l border-outline-variant/15 pl-8">
+                <div className="text-6xl md:text-7xl font-headline font-black text-primary-container tracking-tighter">
+                  <AnimatedCounter target={9} suffix="" />
+                </div>
+                <p className="text-on-surface-variant uppercase tracking-widest text-sm md:text-base font-label">{t("landing.statLayers")}</p>
+              </motion.div>
             </div>
-          </div>
+          </motion.div>
         </section>
 
         {/* ── Gradient transition ── */}
@@ -203,8 +213,8 @@ const Landing = () => {
           <div className="absolute inset-0 section-glow-emerald pointer-events-none" />
           <div className="max-w-7xl mx-auto space-y-16">
             <div className="text-center space-y-4">
-              <h2 className="text-4xl md:text-5xl font-headline font-extrabold text-on-surface">The Sentinel Ecosystem</h2>
-              <p className="text-on-surface-variant max-w-2xl mx-auto">Sophisticated protection layers designed to outpace synthetic identity theft and neural network manipulation.</p>
+              <h2 className="text-5xl md:text-6xl font-headline font-extrabold text-on-surface">{t("landing.featuresTitle")}</h2>
+              <p className="text-xl md:text-2xl text-on-surface-variant max-w-3xl mx-auto font-light">{t("landing.featuresSubtitle")}</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
@@ -212,8 +222,8 @@ const Landing = () => {
               <div className="md:col-span-8 bg-surface-container-low/60 backdrop-blur-sm p-12 rounded-3xl group relative overflow-hidden border border-outline-variant/10 hover:border-primary/15 transition-all duration-500">
                 <div className="relative z-10 space-y-6">
                   <MaterialIcon icon="record_voice_over" filled size={48} className="text-secondary" />
-                  <h3 className="text-3xl font-headline font-bold text-on-surface">Voice Cloning Detection</h3>
-                  <p className="text-on-surface-variant max-w-md">Our 7-layer neural acoustic analyzer detects synthetic artifacts in audio streams with laboratory-grade precision, neutralizing impersonation scams instantly.</p>
+                  <h3 className="text-4xl md:text-5xl font-headline font-bold text-on-surface">{t("landing.featureVoiceTitle")}</h3>
+                  <p className="text-lg md:text-xl text-on-surface-variant max-w-2xl font-light">{t("landing.featureVoiceDesc")}</p>
                 </div>
                 <div className="absolute -bottom-20 -right-20 w-80 h-80 bg-secondary/10 rounded-full blur-[100px] group-hover:bg-secondary/20 transition-all" />
               </div>
@@ -222,8 +232,8 @@ const Landing = () => {
               <div className="md:col-span-4 bg-surface-container/60 backdrop-blur-sm p-12 rounded-3xl border border-outline-variant/10 hover:border-primary/15 flex flex-col justify-between transition-all duration-500">
                 <MaterialIcon icon="visibility" size={48} className="text-primary-container" />
                 <div className="space-y-4 mt-8">
-                  <h3 className="text-2xl font-headline font-bold text-on-surface">Visual Verifier</h3>
-                  <p className="text-sm text-on-surface-variant">Frame-by-frame forensic analysis of images and videos to identify AI-generated content.</p>
+                  <h3 className="text-3xl lg:text-4xl font-headline font-bold text-on-surface">{t("landing.featureMediaTitle")}</h3>
+                  <p className="text-base lg:text-lg text-on-surface-variant font-light">{t("landing.featureMediaDesc")}</p>
                 </div>
               </div>
 
@@ -231,19 +241,20 @@ const Landing = () => {
               <div className="md:col-span-4 bg-surface-container-high/60 backdrop-blur-sm p-12 rounded-3xl border border-outline-variant/10 hover:border-primary/15 transition-all duration-500">
                 <MaterialIcon icon="verified_user" filled size={48} className="text-primary" />
                 <div className="mt-8 space-y-4">
-                  <h3 className="text-2xl font-headline font-bold text-on-surface">Voice Prints</h3>
-                  <p className="text-sm text-on-surface-variant">Biometric voice enrollment for your family — verify caller identity in real-time.</p>
+                  <h3 className="text-3xl lg:text-4xl font-headline font-bold text-on-surface">{t("landing.featureBiometricTitle")}</h3>
+                  <p className="text-base lg:text-lg text-on-surface-variant font-light">{t("landing.featureBiometricDesc")}</p>
                 </div>
               </div>
 
-              {/* Real-time Scanning — Large */}
+              {/* Live Scanning — Large */}
               <div className="md:col-span-8 bg-surface-container-low/60 backdrop-blur-sm p-12 rounded-3xl relative overflow-hidden group border border-outline-variant/10 hover:border-primary/15 transition-all duration-500">
                 <div className="relative z-10 space-y-6">
-                  <h3 className="text-3xl font-headline font-bold text-on-surface">Real-time Call Protection</h3>
-                  <p className="text-on-surface-variant max-w-sm">Live monitoring that analyzes incoming calls for voice cloning, coercion patterns, and identity mismatch — all in under 3 seconds.</p>
+                  <h3 className="text-4xl md:text-5xl font-headline font-bold text-on-surface">{t("landing.featureMonitorTitle")}</h3>
+                  <p className="text-lg md:text-xl text-on-surface-variant max-w-2xl font-light">{t("landing.featureMonitorDesc")}</p>
                   <div className="flex gap-4">
-                    <span className="px-4 py-2 bg-secondary/10 text-secondary rounded-[0.75rem] text-xs font-bold uppercase tracking-widest">Always On</span>
-                    <span className="px-4 py-2 bg-primary/10 text-primary rounded-[0.75rem] text-xs font-bold uppercase tracking-widest">7-Layer Detection</span>
+                    <span className="px-4 py-2 bg-secondary/10 text-secondary rounded-[0.75rem] text-xs font-bold uppercase tracking-widest">{t("landing.tagGuardrailed")}</span>
+                    <span className="px-4 py-2 bg-primary/10 text-primary rounded-[0.75rem] text-xs font-bold uppercase tracking-widest">{t("landing.tagNineLayers")}</span>
+                    <span className="px-4 py-2 bg-error/10 text-error rounded-[0.75rem] text-xs font-bold uppercase tracking-widest">{t("landing.tagAuditable")}</span>
                   </div>
                 </div>
                 <div className="absolute -bottom-20 -right-20 w-80 h-80 bg-primary/10 rounded-full blur-[100px] group-hover:bg-primary/20 transition-all" />
@@ -257,22 +268,22 @@ const Landing = () => {
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary/3 to-transparent pointer-events-none" />
           <div className="max-w-7xl mx-auto relative z-10">
             <div className="text-center space-y-6 mb-20">
-              <h2 className="text-4xl md:text-5xl font-headline font-extrabold text-on-surface">Built for Indian Families</h2>
-              <p className="text-on-surface-variant text-lg max-w-2xl mx-auto">Protecting families from voice cloning scams, digital kidnapping threats, and AI-powered coercion. Multilingual support for Hindi, Marathi, and English.</p>
+              <h2 className="text-5xl md:text-6xl font-headline font-extrabold text-on-surface">{t("landing.whyTitle")}</h2>
+              <p className="text-on-surface-variant text-xl md:text-2xl max-w-3xl mx-auto font-light">{t("landing.whySubtitle")}</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {[
-                { icon: "lock", title: "Privacy First", desc: "All analysis is performed locally. Audio is processed in real-time and immediately discarded — we never store your calls." },
-                { icon: "speed", title: "Sub-Second Detection", desc: "Our 9-layer neural engine analyzes voice patterns in under 0.3 seconds, detecting synthetic artifacts before they reach you." },
-                { icon: "translate", title: "Multilingual Safety", desc: "Full support for English, Hindi, and Marathi — ensuring every family member can use and understand the protection." },
+                { icon: "gavel", title: t("landing.whyGuardrailsTitle"), desc: t("landing.whyGuardrailsDesc") },
+                { icon: "speed", title: t("landing.whyDetectionTitle"), desc: t("landing.whyDetectionDesc") },
+                { icon: "description", title: t("landing.whyAuditsTitle"), desc: t("landing.whyAuditsDesc") },
               ].map((item) => (
                 <div key={item.title} className="p-10 rounded-3xl bg-surface-container-low/60 backdrop-blur-sm border border-outline-variant/10 space-y-5 group hover:bg-surface-container-high/40 transition-all duration-300">
                   <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
                     <MaterialIcon icon={item.icon} filled size={28} className="text-primary" />
                   </div>
-                  <h3 className="text-2xl font-headline font-bold text-on-surface">{item.title}</h3>
-                  <p className="text-on-surface-variant leading-relaxed">{item.desc}</p>
+                  <h3 className="text-3xl font-headline font-bold text-on-surface">{item.title}</h3>
+                  <p className="text-lg text-on-surface-variant leading-relaxed font-light">{item.desc}</p>
                 </div>
               ))}
             </div>
@@ -284,25 +295,25 @@ const Landing = () => {
           <div className="max-w-5xl mx-auto bg-gradient-to-br from-surface-container-high to-surface-container-lowest rounded-[3rem] p-16 md:p-24 text-center space-y-12 relative overflow-hidden border border-outline-variant/10">
             <div className="absolute inset-0 bg-primary/5 blur-[120px] pointer-events-none" />
             <div className="relative z-10 space-y-6">
-              <h2 className="text-5xl md:text-7xl font-headline font-extrabold text-on-surface tracking-tighter">
-                Your Shield in the <br /><span className="text-secondary">Synthetic Age.</span>
+              <h2 className="text-6xl md:text-8xl font-headline font-extrabold text-on-surface tracking-tighter leading-tight">
+                {t("landing.ctaTitle")} <br /><span className="text-secondary">{t("landing.ctaHighlight")}</span>
               </h2>
-              <p className="text-xl text-on-surface-variant max-w-2xl mx-auto font-body">
-                Deploy Satya Drishti today and reclaim the truth. Protect your family from the rising tide of AI-powered fraud.
+              <p className="text-2xl md:text-3xl font-light text-on-surface-variant max-w-3xl mx-auto font-body leading-relaxed">
+                {t("landing.ctaDescription")}
               </p>
             </div>
-            <div className="relative z-10 flex flex-col md:flex-row justify-center items-center gap-6">
+            <div className="relative z-10 flex flex-col md:flex-row justify-center items-center gap-8 mt-4">
               <Link
-                to={isAuthenticated ? "/call-protection" : "/login"}
-                className="w-full md:w-auto px-12 py-6 bg-gradient-to-br from-primary to-primary-container text-on-primary font-headline font-extrabold text-lg uppercase tracking-tight rounded-2xl shadow-[0_20px_40px_rgba(0,209,255,0.2)] hover:scale-105 active:scale-95 transition-all"
+                to="/hub"
+                className="w-full md:w-auto px-14 py-8 bg-gradient-to-br from-primary to-primary-container text-on-primary font-headline font-extrabold text-xl md:text-2xl uppercase tracking-widest rounded-3xl shadow-[0_20px_40px_rgba(0,209,255,0.2)] hover:shadow-[0_20px_60px_rgba(0,209,255,0.4)] hover:scale-105 active:scale-95 transition-all"
               >
-                Start Protecting Your Family
+                {t("common.deployPlatform")}
               </Link>
               <Link
                 to="/scanner"
-                className="text-on-surface-variant hover:text-on-surface font-headline font-bold uppercase tracking-widest text-sm underline decoration-primary underline-offset-8 transition-all"
+                className="text-on-surface-variant hover:text-on-surface font-headline font-bold uppercase tracking-[0.2em] text-base md:text-lg underline decoration-primary underline-offset-8 transition-colors"
               >
-                Try the Scanner Free
+                {t("common.tryMediaForensics")}
               </Link>
             </div>
           </div>

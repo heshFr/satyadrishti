@@ -36,15 +36,21 @@ echo "[1/2] Starting FastAPI server on port $PORT..."
 cd "$PROJECT_DIR"
 python -m server.app &
 SERVER_PID=$!
-sleep 4
 
-# Verify server is up
-if ! curl -s http://localhost:$PORT/docs > /dev/null 2>&1; then
-    echo "ERROR: Server failed to start!"
-    kill $SERVER_PID 2>/dev/null
-    exit 1
-fi
-echo "  ✓ Server running (PID $SERVER_PID)"
+# Wait up to 30s for server to be ready
+echo "  Waiting for server..."
+for i in $(seq 1 30); do
+    if curl -s http://localhost:$PORT/docs > /dev/null 2>&1; then
+        echo "  ✓ Server running (PID $SERVER_PID)"
+        break
+    fi
+    if [ $i -eq 30 ]; then
+        echo "ERROR: Server failed to start after 30s!"
+        kill $SERVER_PID 2>/dev/null
+        exit 1
+    fi
+    sleep 1
+done
 
 # Start Cloudflare tunnel
 echo "[2/2] Creating Cloudflare tunnel..."

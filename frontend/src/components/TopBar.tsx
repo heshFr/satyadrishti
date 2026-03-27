@@ -3,9 +3,10 @@ import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
-import LanguageToggle from "./LanguageToggle";
+
 import UserMenu from "./UserMenu";
 import MaterialIcon from "./MaterialIcon";
+import LanguageDropdown from "./LanguageDropdown";
 
 interface TopBarProps {
   systemStatus: "protected" | "monitoring" | "alert";
@@ -24,22 +25,27 @@ const TopBar = ({ systemStatus }: TopBarProps) => {
     return () => window.removeEventListener("scroll", handler);
   }, []);
 
-  const navItems: { path: string; label: string; icon?: string; highlight?: boolean }[] = [
-    { path: "/call-protection", label: "Call Protection", icon: "shield", highlight: true },
-    { path: "/scanner", label: t("common.scanner"), icon: "image_search" },
-    { path: "/help", label: "Help", icon: "help_outline" },
-    { path: "/contact", label: "Contact", icon: "mail" },
-    { path: "/settings", label: "Settings", icon: "settings" },
-  ];
-
   const isLanding = location.pathname === "/";
+
+  const navItems = isLanding 
+    ? [
+        { path: "#features", label: t("common.platform"), icon: "dashboard" },
+        { path: "/about", label: t("common.about"), icon: "info" },
+      ]
+    : [
+        { path: "/call-protection", label: t("common.callProtection"), icon: "shield", highlight: true },
+        { path: "/scanner", label: t("common.scanner"), icon: "search" },
+        { path: "/history", label: t("common.history"), icon: "history" },
+        { path: "/help", label: t("common.help"), icon: "help_outline" },
+        { path: "/contact", label: t("common.contact"), icon: "mail" },
+      ];
 
   return (
     <nav
-      className={`fixed top-0 w-full z-50 transition-all duration-300 ${
+      className={`fixed top-0 w-full z-50 transition-all duration-500 ${
         scrolled || !isLanding
-          ? "bg-surface/85 backdrop-blur-2xl shadow-[0_4px_30px_rgba(0,0,0,0.3)] border-b border-outline-variant/10"
-          : "bg-transparent"
+          ? "bg-black/40 backdrop-blur-xl border-b border-white/5 shadow-[0_4px_30px_rgba(0,0,0,0.3)]"
+          : "bg-transparent border-b border-transparent"
       }`}
     >
       <div className="flex justify-between items-center max-w-[1600px] mx-auto px-6 lg:px-10 h-24">
@@ -55,74 +61,98 @@ const TopBar = ({ systemStatus }: TopBarProps) => {
           </Link>
 
           {/* Desktop nav */}
-          <div className="hidden lg:flex gap-2 items-center">
+          <div className="hidden lg:flex gap-8 items-center ml-4">
             {navItems.map((item) => {
               const isActive = location.pathname === item.path;
               return (
                 <Link
                   key={item.path}
                   to={item.path}
-                  className={`font-headline text-[15px] tracking-tight transition-all duration-300 flex items-center gap-2 px-5 py-2.5 rounded-xl ${
+                  className={`relative group font-headline text-[13px] tracking-[0.15em] uppercase transition-all duration-300 flex items-center gap-2 py-2 ${
                     isActive
-                      ? item.highlight
-                        ? "bg-primary/15 text-primary font-extrabold shadow-[0_0_15px_rgba(0,209,255,0.15)]"
-                        : "bg-surface-container-high/60 text-on-surface font-bold"
-                      : item.highlight
-                        ? "text-primary font-bold hover:bg-primary/10 hover:shadow-[0_0_15px_rgba(0,209,255,0.1)]"
-                        : "text-on-surface-variant font-semibold hover:text-on-surface hover:bg-surface-container-high/40"
+                      ? "text-primary font-extrabold"
+                      : "text-on-surface-variant font-bold hover:text-primary-container"
                   }`}
                 >
-                  {item.icon && <MaterialIcon icon={item.icon} size={20} filled={isActive || !!item.highlight} />}
+                  {item.icon && <MaterialIcon icon={item.icon} size={18} filled={isActive} />}
                   {item.label}
+                  {/* Underline expansion animation */}
+                  <span 
+                    className={`absolute bottom-0 left-0 h-[2px] bg-gradient-to-r from-primary-container to-secondary transition-all duration-300 ease-out ${
+                      isActive ? "w-full" : "w-0 group-hover:w-full"
+                    }`}
+                  />
                 </Link>
               );
             })}
           </div>
         </div>
 
-        {/* Right side */}
-        <div className="flex items-center gap-4 lg:gap-5">
-          {/* System status */}
-          <div className="hidden md:flex items-center gap-2.5 px-4 py-2 rounded-xl bg-surface-container-high/50 border border-outline-variant/10">
-            <div
-              className={`h-2.5 w-2.5 rounded-full ${
-                systemStatus === "protected"
-                  ? "bg-secondary shadow-[0_0_12px_rgba(78,222,163,0.6)]"
-                  : systemStatus === "alert"
-                  ? "bg-error animate-pulse shadow-[0_0_12px_rgba(255,180,171,0.6)]"
-                  : "bg-primary animate-pulse shadow-[0_0_12px_rgba(0,209,255,0.6)]"
-              }`}
-            />
-            <span className="text-sm font-headline font-bold uppercase tracking-widest text-on-surface-variant">
-              {systemStatus === "protected" ? "Protected" : systemStatus === "alert" ? "Alert" : "Monitoring"}
-            </span>
+        {/* Right side actions */}
+        <div className="flex items-center gap-4 lg:gap-6">
+          <div className="hidden lg:flex items-center gap-6">
+            <LanguageDropdown />
+            
+            <div className="h-6 w-px bg-outline-variant/30 mx-2"></div>
+
+            {/* Settings — only on app pages */}
+            {!isLanding && (
+              <Link
+                to="/settings"
+                className="p-2.5 text-on-surface-variant hover:text-primary transition-all duration-300 rounded-full hover:bg-white/5 active:scale-95"
+                title="Settings"
+              >
+                <MaterialIcon icon="settings" size={22} />
+              </Link>
+            )}
+
+            {isAuthenticated ? (
+              <UserMenu />
+            ) : isLanding ? (
+              /* Landing: Login + Sign Up (cyan glow) */
+              <div className="flex items-center gap-6">
+                <Link
+                  to="/login"
+                  className="text-on-surface-variant hover:text-primary font-headline tracking-widest font-bold text-[12px] uppercase transition-colors active:scale-95"
+                >
+                  {t("common.login")}
+                </Link>
+                <Link
+                  to="/register"
+                  className="px-7 py-2.5 bg-gradient-to-r from-[#00d1ff] to-[#00d1ff]/80 text-[#070d1f] font-headline font-black text-[12px] uppercase tracking-widest rounded-full shadow-[0_0_25px_rgba(0,209,255,0.4)] hover:shadow-[0_0_40px_rgba(0,209,255,0.6)] transition-all active:scale-95 hover:scale-[1.05]"
+                >
+                  {t("common.signUp")}
+                </Link>
+              </div>
+            ) : (
+              /* App pages: Login + Get Protected */
+              <div className="flex items-center gap-8">
+                <Link
+                  to="/login"
+                  className="text-on-surface-variant hover:text-primary font-headline tracking-widest font-bold text-[12px] uppercase transition-colors active:scale-95"
+                >
+                  {t("common.login")}
+                </Link>
+                <Link
+                  to="/call-protection"
+                  className="px-6 py-2.5 bg-gradient-to-r from-primary to-secondary text-surface font-headline font-black text-[12px] uppercase tracking-widest rounded-full shadow-[0_0_20px_rgba(0,209,255,0.2)] hover:shadow-[0_0_30px_rgba(0,209,255,0.4)] transition-all active:scale-95 hover:scale-[1.05]"
+                >
+                  {t("common.getProtected")} →
+                </Link>
+              </div>
+            )}
           </div>
 
-          <LanguageToggle />
-
-          <button className="p-2.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high/50 transition-all duration-300 rounded-xl">
-            <MaterialIcon icon="notifications" size={24} />
-          </button>
-
-          {isAuthenticated ? (
-            <UserMenu />
-          ) : (
-            <Link
-              to="/login"
-              className="hidden sm:flex items-center gap-2 bg-gradient-to-br from-primary to-primary-container text-on-primary px-7 py-3 rounded-xl font-headline tracking-tight font-extrabold text-[15px] uppercase shadow-[0_4px_20px_rgba(0,209,255,0.25)] hover:shadow-[0_4px_30px_rgba(0,209,255,0.4)] transition-all active:scale-95"
+          {/* Mobile controls */}
+          <div className="lg:hidden flex items-center gap-4">
+            <LanguageDropdown />
+            <button
+              className="p-2.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high/50 transition-all rounded-xl active:scale-95"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
-              <MaterialIcon icon="login" size={20} />
-              {t("common.login")}
-            </Link>
-          )}
-
-          {/* Mobile hamburger */}
-          <button
-            className="lg:hidden p-2.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high/50 transition-all rounded-xl"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          >
-            <MaterialIcon icon={mobileMenuOpen ? "close" : "menu"} size={28} />
-          </button>
+              <MaterialIcon icon={mobileMenuOpen ? "close" : "menu"} size={28} />
+            </button>
+          </div>
         </div>
       </div>
 

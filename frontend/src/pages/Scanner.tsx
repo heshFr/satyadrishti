@@ -17,6 +17,8 @@ interface ApiResult {
   raw_scores?: Record<string, any>;
   scan_id?: string | null;
   report_url?: string | null;
+  status_text?: string;
+  subtext?: string;
 }
 
 // ─── Constants ─────────────────────────────────────────────────────────
@@ -76,16 +78,33 @@ function layerScore(id: string, rs: Record<string, any>): number {
   return v != null ? Math.round((1 - v) * 100) : -1;
 }
 
-function verdictCfg(v: Verdict) {
-  if (v === "ai-generated") return { label: "SYNTHETIC", threat: "CRITICAL", color: "text-error", bg: "bg-error", border: "border-error", glow: "shadow-glow-danger", glowBg: "bg-error/10" };
-  if (v === "authentic") return { label: "AUTHENTIC", threat: "CLEARED", color: "text-secondary", bg: "bg-secondary", border: "border-secondary", glow: "shadow-glow-safe", glowBg: "bg-secondary/10" };
-  return { label: "INCONCLUSIVE", threat: "WARNING", color: "text-primary", bg: "bg-primary", border: "border-primary", glow: "shadow-glow-sm", glowBg: "bg-primary/10" };
+function verdictCfg(v: Verdict, statusText?: string) {
+  if (statusText === "Partially Consistent") {
+    return { 
+      label: "PARTIALLY CONSISTENT", 
+      threat: "MODERATE", 
+      color: "text-primary", 
+      bg: "bg-primary", 
+      border: "border-primary", 
+      glow: "shadow-glow-sm", 
+      glowBg: "bg-primary/20",
+      icon: "warning_amber"
+    };
+  }
+  if (v === "ai-generated") return { label: "SYNTHETIC", threat: "CRITICAL", color: "text-error", bg: "bg-error", border: "border-error", glow: "shadow-glow-danger", glowBg: "bg-error/10", icon: "dangerous" };
+  if (v === "authentic") return { label: "AUTHENTIC", threat: "CLEARED", color: "text-secondary", bg: "bg-secondary", border: "border-secondary", glow: "shadow-glow-safe", glowBg: "bg-secondary/10", icon: "verified" };
+  return { label: "INCONCLUSIVE", threat: "WARNING", color: "text-primary", bg: "bg-primary", border: "border-primary", glow: "shadow-glow-sm", glowBg: "bg-primary/10", icon: "help" };
 }
 
-function genDescription(v: Verdict, checks: any[]) {
+function genDescription(v: Verdict, checks: any[], statusText?: string) {
   const f = checks.filter((c: any) => c.status === "fail").length;
   const w = checks.filter((c: any) => c.status === "warn").length;
   const p = checks.filter((c: any) => c.status === "pass").length;
+  
+  if (statusText === "Partially Consistent") {
+    return `Forensic analysis detected several anomalies despite structural consistency. ${f} failed checks and ${w} warnings suggest potential manipulation or low-fidelity synthesis. Proceed with caution.`;
+  }
+  
   if (v === "authentic") return `Multilayer forensic analysis completed. ${p} analysis layers passed verification. The media maintains consistent spectral integrity with no synthetic artifacts detected.`;
   if (v === "ai-generated") return `Multilayer forensic analysis completed. ${f} critical anomalies and ${w} warnings detected across forensic layers. Synthetic generation patterns identified in neural and frequency domains.`;
   return `Multilayer forensic analysis completed. Mixed signals across ${checks.length} forensic layers with ${w} warnings. Manual review recommended for conclusive determination.`;
@@ -116,7 +135,7 @@ const Scanner = () => {
   const confidence = result?.confidence ?? 0;
   const checks = result?.forensic_checks ?? result?.forensic_data ?? [];
   const raw = result?.raw_scores ?? {};
-  const vc = verdictCfg(verdict);
+  const vc = verdictCfg(verdict, result?.status_text);
   const anomalies = checks.filter((c: any) => c.status === "fail" || c.status === "warn");
   const passes = checks.filter((c: any) => c.status === "pass");
   const circumference = 2 * Math.PI * 28;
@@ -301,50 +320,75 @@ const Scanner = () => {
              UPLOAD / PREVIEW / ANALYZING
            ═══════════════════════════════════════════════════════════════ */}
         {state !== "results" && (
-          <div className="space-y-20">
+          <div className="space-y-16">
             {/* Hero */}
-            <section className="space-y-12">
-              <div className="max-w-3xl">
-                <h1 className="font-headline text-5xl md:text-6xl font-extrabold tracking-tighter text-on-surface mb-4">
-                  Media Scanner<span className="text-primary-container">.</span>
+            <section className="space-y-8">
+              <div className="max-w-5xl">
+                <h1 className="font-headline text-6xl md:text-8xl font-black tracking-tighter text-on-surface mb-6 leading-[0.85]">
+                  Detection Lab<span className="text-primary-container">.</span>
                 </h1>
-                <p className="text-on-surface-variant text-lg max-w-xl font-light leading-relaxed">
-                  Deploying neural artifacts detection to verify visual and auditory authenticity. Upload assets for multi-layer forensic auditing.
+                <p className="text-on-surface-variant text-xl max-w-2xl font-light leading-relaxed">
+                  Advanced neural artifact analysis for enterprise-grade media verification. 
+                  Identify synthetic manipulation across <span className="text-primary font-bold">image, video, and audio</span> domains.
                 </p>
               </div>
 
-              {/* Upload Zone */}
+              {/* Upload Zone — "System Input Panel" */}
               {state === "upload" && (
-                <div className="relative group">
-                  <div
-                    onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-                    onDragLeave={() => setIsDragging(false)}
-                    onDrop={handleDrop}
-                    onClick={() => inputRef.current?.click()}
-                    className={`w-full aspect-[21/9] bg-surface-container-highest/40 backdrop-blur-xl rounded-xl border transition-all duration-500 cursor-pointer flex flex-col items-center justify-center space-y-6 overflow-hidden relative ${
-                      isDragging ? "border-primary/40 bg-surface-container-highest/60 shadow-glow" : "border-outline-variant/10 hover:bg-surface-container-highest/60 shadow-glow-sm"
-                    }`}
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-tr from-primary/5 via-transparent to-transparent opacity-50" />
-                    <div className="relative z-10 flex flex-col items-center">
-                      <div className={`w-20 h-20 rounded-full bg-surface-container-high flex items-center justify-center mb-6 border border-primary/20 transition-transform duration-500 ${isDragging ? "scale-110" : "group-hover:scale-110"}`}>
-                        <MaterialIcon icon="cloud_upload" size={40} className="text-primary-container" />
-                      </div>
-                      <h3 className="font-headline text-2xl font-bold tracking-tight text-on-surface">Initialize Scan</h3>
-                      <p className="font-label text-sm uppercase tracking-widest text-on-surface-variant mt-2 opacity-60">
-                        {isDragging ? "Drop file to begin" : "Drag media files or click to browse"}
-                      </p>
-                    </div>
-                    <div className="flex gap-4 z-10">
-                      {[{ icon: "image", label: "Image" }, { icon: "movie", label: "Video" }, { icon: "audiotrack", label: "Audio" }].map((b) => (
-                        <div key={b.label} className="flex items-center gap-2 px-4 py-2 bg-surface-container-low rounded-full border border-outline-variant/10">
-                          <MaterialIcon icon={b.icon} size={14} className="text-primary" />
-                          <span className="text-xs font-label uppercase tracking-tighter text-on-surface-variant">{b.label}</span>
+                <div className="space-y-6">
+                  <div className="relative group">
+                    {/* Animated Border Glow */}
+                    <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 via-primary/40 to-primary/20 rounded-3xl blur opacity-25 group-hover:opacity-60 transition duration-1000 group-hover:duration-200" />
+                    
+                    <div
+                      onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                      onDragLeave={() => setIsDragging(false)}
+                      onDrop={handleDrop}
+                      onClick={() => inputRef.current?.click()}
+                      className={`relative w-full aspect-[21/9] bg-surface-container-highest/20 backdrop-blur-2xl rounded-2xl border transition-all duration-700 cursor-pointer flex flex-col items-center justify-center space-y-6 overflow-hidden ${
+                        isDragging ? "border-primary bg-primary/10 shadow-[0_0_50px_rgba(0,209,255,0.3)] scale-[1.01]" : "border-white/5 hover:border-primary/40 hover:bg-surface-container-highest/40"
+                      }`}
+                    >
+                      {/* Grid Background Trace */}
+                      <div className="absolute inset-0 opacity-[0.03] pointer-events-none" 
+                        style={{ backgroundImage: "linear-gradient(#fff 1px, transparent 1px), linear-gradient(90(#fff 1px, transparent 1px)", backgroundSize: "40px 40px" }} 
+                      />
+                      
+                      <div className="relative z-10 flex flex-col items-center">
+                        <div className={`w-32 h-32 rounded-3xl bg-surface-container-high/80 backdrop-blur-md border border-white/10 flex items-center justify-center mb-8 transition-all duration-700 shadow-2xl ${isDragging ? "scale-110 border-primary/50 bg-primary/10 shadow-[0_0_40px_rgba(0,209,255,0.4)]" : "group-hover:scale-[1.1] group-hover:border-primary/30 group-hover:bg-surface-container-highest"}`}>
+                          <MaterialIcon icon="upload_file" size={64} className={`transition-colors duration-500 ${isDragging ? "text-primary" : "text-primary-container/60 group-hover:text-primary"}`} />
                         </div>
-                      ))}
+                        
+                        <h3 className="font-headline text-4xl md:text-5xl font-black tracking-tight text-on-surface text-center px-4 mb-2">
+                          Upload Evidence for Analysis
+                        </h3>
+                        
+                        <div className="flex flex-col items-center gap-5 mt-4">
+                          <div className="flex gap-6 z-10 opacity-60 group-hover:opacity-100 transition-opacity duration-500">
+                            {[{ icon: "image", label: "Image" }, { icon: "movie", label: "Video" }, { icon: "audiotrack", label: "Audio" }].map((b) => (
+                              <div key={b.label} className="flex items-center gap-3 px-4 py-2 bg-black/40 rounded-xl border border-white/5 backdrop-blur-md">
+                                <MaterialIcon icon={b.icon} size={18} className="text-primary-container" />
+                                <span className="text-xs font-label uppercase tracking-widest text-on-surface-variant font-bold">{b.label}</span>
+                              </div>
+                            ))}
+                          </div>
+                          
+                          <div className="flex flex-col items-center gap-3">
+                            <p className="font-label text-sm uppercase tracking-[0.3em] text-outline font-bold">
+                              {isDragging ? "Drop to intercept" : "Drag and drop forensic subject"}
+                            </p>
+                            <div className="flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full border border-primary/20">
+                              <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                              <span className="text-[10px] text-primary uppercase tracking-[0.2em] font-black">
+                                Multi-layer forensic processing enabled
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
+                    <input ref={inputRef} type="file" accept={ACCEPT_EXT} className="hidden" onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} />
                   </div>
-                  <input ref={inputRef} type="file" accept={ACCEPT_EXT} className="hidden" onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} />
                 </div>
               )}
 
@@ -376,30 +420,54 @@ const Scanner = () => {
 
             {/* Pipeline Animation */}
             {state === "analyzing" && (
-              <section className="space-y-8">
-                <div className="flex items-center justify-between">
-                  <span className="font-label text-xs uppercase tracking-widest text-primary font-bold">Pipeline Status</span>
-                  <span className="font-label text-xs text-on-surface-variant italic">ID: {scanId}</span>
+              <section className="space-y-12">
+                {/* Cinematic Scanning Preview */}
+                <div className="relative w-full aspect-video rounded-3xl overflow-hidden bg-surface-container-low border border-white/5 shadow-2xl">
+                  {preview ? (
+                    <img src={preview} alt="Scanning" className="w-full h-full object-contain opacity-40 grayscale" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-surface-container-high">
+                      <MaterialIcon icon="biotech" size={80} className="text-primary/20 animate-pulse" />
+                    </div>
+                  )}
+                  {/* Scanning Beam */}
+                  <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary/20 to-transparent h-20 w-full animate-scan-line z-20" />
+                  <div className="absolute inset-0 bg-primary/5 backdrop-blur-[2px] z-10" />
+                  
+                  <div className="absolute inset-0 flex flex-col items-center justify-center z-30">
+                    <div className="p-8 rounded-2xl bg-black/60 backdrop-blur-xl border border-white/10 flex flex-col items-center gap-4">
+                      <div className="w-16 h-16 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+                      <p className="font-headline text-xl font-bold tracking-widest uppercase text-primary">Analyzing Subject...</p>
+                      <p className="text-xs font-mono text-outline uppercase tracking-widest italic">{scanId}</p>
+                    </div>
+                  </div>
                 </div>
-                <div className="relative flex justify-between items-start">
-                  <div className="absolute top-5 left-0 w-full h-[1px] bg-surface-container-high z-0" />
-                  {PIPELINE_STEPS.map((step, i) => {
-                    const done = currentStep > i; const active = currentStep === i;
-                    return (
-                      <div key={step.key} className={`relative z-10 flex flex-col items-center w-1/4 text-center ${currentStep < i ? "opacity-40" : ""}`}>
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-4 transition-all ${
-                          done ? "bg-secondary-container shadow-glow-emerald" : active ? "bg-primary-container ring-4 ring-primary/10" : "bg-surface-container-high"
-                        }`}>
-                          {done ? <MaterialIcon icon="check" filled size={16} className="text-on-secondary" /> :
-                            <MaterialIcon icon={step.icon} size={16} className={active ? "text-on-primary-container animate-pulse" : "text-on-surface-variant"} />}
+
+                <div className="space-y-8">
+                  <div className="flex items-center justify-between">
+                    <span className="font-label text-xs uppercase tracking-widest text-primary font-bold">Forensic Pipeline Status</span>
+                    <span className="font-label text-xs text-on-surface-variant italic">ID: {scanId}</span>
+                  </div>
+                  <div className="relative flex justify-between items-start pt-4">
+                    <div className="absolute top-9 left-0 w-full h-[2px] bg-surface-container-high z-0" />
+                    {PIPELINE_STEPS.map((step, i) => {
+                      const done = currentStep > i; const active = currentStep === i;
+                      return (
+                        <div key={step.key} className={`relative z-10 flex flex-col items-center w-1/4 text-center transition-all duration-500 ${currentStep < i ? "opacity-30 grayscale" : "opacity-100"}`}>
+                          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-4 transition-all duration-500 ${
+                            done ? "bg-secondary shadow-glow-emerald rotate-[360deg]" : active ? "bg-primary-container ring-8 ring-primary/10 scale-110" : "bg-surface-container-high"
+                          }`}>
+                            {done ? <MaterialIcon icon="check" filled size={20} className="text-on-secondary" /> :
+                              <MaterialIcon icon={step.icon} size={20} className={active ? "text-on-primary-container animate-pulse" : "text-on-surface-variant"} />}
+                          </div>
+                          <span className="font-headline text-sm font-bold text-on-surface">{step.label}</span>
+                          <span className={`text-[10px] font-label uppercase tracking-widest mt-1 font-black ${done ? "text-secondary" : active ? "text-primary animate-pulse" : "text-on-surface-variant"}`}>
+                            {done ? "Verified" : active ? "Analyzing..." : "Buffered"}
+                          </span>
                         </div>
-                        <span className="font-headline text-sm font-bold text-on-surface">{step.label}</span>
-                        <span className={`text-[10px] font-label uppercase tracking-tighter mt-1 ${done ? "text-on-surface-variant" : active ? "text-primary" : "text-on-surface-variant"}`}>
-                          {done ? "Completed" : active ? "Processing..." : "Pending"}
-                        </span>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
               </section>
             )}
@@ -410,28 +478,40 @@ const Scanner = () => {
              RESULTS — Single Page Forensic Dashboard
            ═══════════════════════════════════════════════════════════════ */}
         {state === "results" && result && (
-          <div className="space-y-12">
+          <div className="space-y-12 animate-in fade-in slide-in-from-bottom-8 duration-1000">
 
             {/* ────────────────────────────────────────────────────────
                  SECTION 1 — Case Header
                ──────────────────────────────────────────────────────── */}
             <header className="flex flex-col lg:flex-row justify-between lg:items-start gap-8">
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-4 mb-4">
-                  <span className="text-primary font-mono text-xs tracking-widest uppercase">Case ID: {scanId}</span>
-                  <span className={`text-[10px] px-3 py-1 rounded-full border font-bold uppercase ${
+                <div className="flex flex-wrap items-center gap-4 mb-5">
+                  <span className="text-primary font-mono text-xs tracking-widest uppercase bg-primary/5 px-3 py-1 rounded-md border border-primary/20">Case ID: {scanId}</span>
+                  
+                  {/* Forensic Override Badge */}
+                  {(verdict === "ai-generated" && confidence < 75) || anomalies.length >= 2 ? (
+                    <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-error/10 border border-error/30">
+                      <MaterialIcon icon="gavel" size={14} className="text-error" />
+                      <span className="text-[10px] font-black text-error uppercase tracking-[0.1em]">Forensic Rule Override Active</span>
+                    </div>
+                  ) : null}
+
+                  <span className={`text-[10px] px-3 py-1 rounded-full border font-black uppercase tracking-widest ${
+                    result?.status_text === "Partially Consistent" ? "bg-primary/10 text-primary border-primary/20" :
                     verdict === "ai-generated" ? "bg-error/10 text-error border-error/20" :
                     verdict === "authentic" ? "bg-secondary/10 text-secondary border-secondary/20" :
                     "bg-primary/10 text-primary border-primary/20"
                   }`}>
-                    {verdict === "ai-generated" ? "THREAT DETECTED" : verdict === "authentic" ? "VERIFIED SAFE" : "REVIEW NEEDED"}
+                    {result?.status_text === "Partially Consistent" ? "POTENTIAL RISK" :
+                     verdict === "ai-generated" ? "THREAT DETECTED" : 
+                     verdict === "authentic" ? "VERIFIED SAFE" : "REVIEW NEEDED"}
                   </span>
                 </div>
-                <h1 className="text-3xl md:text-4xl font-headline font-extrabold text-on-surface tracking-tight mb-4 break-words">
-                  Verification Analysis: <span className="text-primary-container break-all">{file?.name ?? "Unknown"}</span>
+                <h1 className="text-4xl md:text-6xl font-headline font-black text-on-surface tracking-tighter mb-6 break-words leading-[0.9]">
+                  Verification Analysis: <span className="text-primary-container break-all font-mono opacity-80">{file?.name ?? "Unknown"}</span>
                 </h1>
                 <p className="text-on-surface-variant text-base font-light leading-relaxed max-w-3xl">
-                  {genDescription(verdict, checks)}
+                  {genDescription(verdict, checks, result?.status_text)}
                 </p>
               </div>
               <div className="flex gap-8 shrink-0">

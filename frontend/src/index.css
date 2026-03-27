@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ─── Sentinel Design System: "The Digital Curator" ─── */
+
 
 /* Dark theme (default) */
 :root, .dark {
@@ -25,24 +25,31 @@
 
 /* Light theme */
 .light {
-  --surface: #f8fafb;
-  --surface-container: #eef2f6;
-  --surface-container-low: #f3f6f9;
-  --surface-container-high: #e4e9ef;
-  --surface-container-highest: #d8dee6;
+  --surface: #f0f4f8;
+  --surface-container: #e2e8f0;
+  --surface-container-low: #edf2f7;
+  --surface-container-high: #cbd5e1;
+  --surface-container-highest: #b0bec5;
   --surface-container-lowest: #ffffff;
-  --on-surface: #111827;
-  --on-surface-variant: #475569;
-  --primary: #0077a3;
-  --primary-container: #0094c4;
-  --secondary: #006d4a;
-  --secondary-container: #008a5e;
-  --error: #ba1a1a;
-  --error-container: #ffdad6;
-  --outline-variant: #c8d0da;
+  --on-surface: #0f172a;
+  --on-surface-variant: #334155;
+  --primary: #0369a1;
+  --primary-container: #0284c7;
+  --secondary: #047857;
+  --secondary-container: #059669;
+  --error: #dc2626;
+  --error-container: #fecaca;
+  --outline-variant: #94a3b8;
 }
 
 /* ─── Base ─── */
+/* Hide standard browser password reveal icon so ours shows properly */
+::-ms-reveal,
+::-ms-clear,
+::-webkit-contacts-auto-fill-button,
+::-webkit-credentials-auto-fill-button {
+  display: none !important;
+}
 
 body {
   background-color: var(--surface);
@@ -318,10 +325,267 @@ body {
   background: linear-gradient(180deg, transparent 0%, rgba(0, 209, 255, 0.02) 50%, transparent 100%);
 }
 
+  .ghost-border {
+    border: 1px solid rgba(60, 73, 78, 0.15);
+  }
+
+  /* Sentinel surface cards — no borders, tonal shifts */
+  .sentinel-card {
+    background: var(--surface-container-low);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .sentinel-card:hover {
+    background: var(--surface-container-high);
+  }
+
+  /* Gradient CTA buttons */
+  .btn-sentinel {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-container) 100%);
+    color: var(--surface);
+    font-family: "Manrope", sans-serif;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .btn-sentinel:hover {
+    filter: brightness(1.1);
+    transform: scale(1.02);
+  }
+  .btn-sentinel:active {
+    transform: scale(0.95);
+  }
+
+  /* Secondary button */
+  .btn-sentinel-secondary {
+    background: var(--surface-container-high);
+    border: 1px solid rgba(60, 73, 78, 0.15);
+    color: var(--on-surface);
+    font-family: "Manrope", sans-serif;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .btn-sentinel-secondary:hover {
+    background: var(--surface-container-highest);
+  }
+
+  /* Underline input (Sentinel spec) */
+  .input-sentinel {
+    background: var(--surface-container-low);
+    border: none;
+    border-bottom: 2px solid var(--outline-variant);
+    color: var(--on-surface);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .input-sentinel:focus {
+    border-bottom-color: var(--primary);
+    box-shadow: 0 2px 8px rgba(164, 230, 255, 0.1);
+    outline: none;
+  }
+
+  /* Gradient text */
+  .gradient-text {
+    background: linear-gradient(135deg, #a4e6ff 0%, #00d1ff 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .gradient-text-emerald {
+    background: linear-gradient(135deg, #4edea3 0%, #6ffbbe 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Emerald aura glow */
+  .emerald-aura {
+    filter: drop-shadow(0 0 12px rgba(78, 222, 163, 0.3));
+  }
+
+  /* Primary glow */
+  .primary-glow {
+    box-shadow: 0 0 20px rgba(0, 209, 255, 0.15);
+  }
+
+  /* Detection chips */
+  .chip-safe {
+    background: rgba(0, 165, 114, 0.2);
+    color: #4edea3;
+    border-radius: 9999px;
+    font-size: 0.625rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .chip-danger {
+    background: rgba(147, 0, 10, 0.3);
+    color: #ffdad6;
+    border-radius: 9999px;
+    font-size: 0.625rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .chip-warning {
+    background: rgba(164, 230, 255, 0.1);
+    color: #a4e6ff;
+    border-radius: 9999px;
+    font-size: 0.625rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  /* Waveform bars */
+  .waveform-bar {
+    animation: pulse-height 1.5s ease-in-out infinite;
+  }
+
+  /* Protection orb */
+  .protection-orb {
+    box-shadow: 0 0 60px 10px rgba(78, 222, 163, 0.2);
+    animation: protection-glow 3s ease-in-out infinite;
+  }
+
+
+/* ─── Keyframes ─── */
+
+@keyframes pulse-height {
+  0%, 100% { height: 10px; }
+  50% { height: 40px; }
+}
+
+@keyframes protection-glow {
+  0%, 100% { box-shadow: 0 0 60px 10px rgba(78, 222, 163, 0.2); }
+  50% { box-shadow: 0 0 80px 20px rgba(78, 222, 163, 0.3); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes scan-line {
+  0% { top: 0%; opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { top: 100%; opacity: 0; }
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(1); opacity: 0.6; }
+  100% { transform: scale(2.5); opacity: 0; }
+}
+
+@keyframes slide-up-fade {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Utility Classes ─── */
+
+.animate-scan-line { animation: scan-line 2s ease-in-out infinite; }
+.animate-pulse-ring { animation: pulse-ring 2s ease-out infinite; }
+
+/* Stagger children */
+.stagger-children > * { animation: slide-up-fade 0.6s cubic-bezier(0.16,1,0.3,1) both; }
+.stagger-children > *:nth-child(1) { animation-delay: 0.05s; }
+.stagger-children > *:nth-child(2) { animation-delay: 0.1s; }
+.stagger-children > *:nth-child(3) { animation-delay: 0.15s; }
+.stagger-children > *:nth-child(4) { animation-delay: 0.2s; }
+.stagger-children > *:nth-child(5) { animation-delay: 0.25s; }
+.stagger-children > *:nth-child(6) { animation-delay: 0.3s; }
+
+/* ─── Reduced motion ─── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ─── Cinematic Section Utilities ─── */
+.section-glow-cyan {
+  background: radial-gradient(ellipse 80% 50% at 50% 50%, rgba(0, 209, 255, 0.04) 0%, transparent 70%);
+}
+.section-glow-emerald {
+  background: radial-gradient(ellipse 80% 50% at 50% 50%, rgba(78, 222, 163, 0.04) 0%, transparent 70%);
+}
+.section-transition {
+  background: linear-gradient(180deg, transparent 0%, rgba(0, 209, 255, 0.02) 50%, transparent 100%);
+}
+
 /* Light mode adjustments for landing sections */
 .light .section-glow-cyan {
   background: radial-gradient(ellipse 80% 50% at 50% 50%, rgba(0, 119, 163, 0.03) 0%, transparent 70%);
 }
 .light .section-glow-emerald {
   background: radial-gradient(ellipse 80% 50% at 50% 50%, rgba(0, 109, 74, 0.03) 0%, transparent 70%);
+}
+
+/* ─── Custom Floating & Scanning Animations ─── */
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-12px); }
+  100% { transform: translateY(0px); }
+}
+
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
+
+.scan-line {
+  position: absolute;
+  width: 100%;
+  height: 3px;
+  background: linear-gradient(to right, transparent, #00d1ff, transparent);
+  animation: scan 3s linear infinite;
+}
+
+@keyframes scan {
+  0% { top: 0%; opacity: 0; }
+  10% { opacity: 1; }
+  50% { top: 100%; opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+
+/* ─── Hero Section Polish ─── */
+@keyframes subtle-zoom {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.1); }
+}
+
+.animate-subtle-zoom {
+  animation: subtle-zoom 20s ease-in-out infinite alternate;
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes spin-slow-reverse {
+  from { transform: rotate(360deg); }
+  to { transform: rotate(0deg); }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 12s linear infinite;
+}
+
+.animate-spin-slow-reverse {
+  animation: spin-slow-reverse 15s linear infinite;
+}
+
+.shadow-glow-cyan {
+  box-shadow: 0 0 60px rgba(0, 209, 255, 0.3);
+}
+
+.shadow-glow-emerald {
+  box-shadow: 0 0 60px rgba(78, 222, 163, 0.3);
 }
