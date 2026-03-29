@@ -65,7 +65,7 @@ pip install -e ".[dev]"
 ### 2. Start the Backend Server
 
 ```bash
-python -m server.app
+bash start-backend.sh
 ```
 
 The API server starts on `http://localhost:8000`. API docs are available at `/docs` (Swagger UI) and `/redoc`.
