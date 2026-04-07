@@ -54,10 +54,13 @@ done
 
 # Start Cloudflare tunnel
 echo "[2/2] Creating Cloudflare tunnel..."
-"$CLOUDFLARED" tunnel --url http://localhost:$PORT 2>&1 | while IFS= read -r line; do
-    # Extract and display the tunnel URL
-    if echo "$line" | grep -q "trycloudflare.com"; then
-        URL=$(echo "$line" | grep -oP 'https://[a-z0-9-]+\.trycloudflare\.com')
+"$CLOUDFLARED" tunnel --url http://localhost:$PORT > tunnel.log 2>&1 &
+TUNNEL_PID=$!
+
+echo "  Waiting for tunnel URL..."
+for i in $(seq 1 30); do
+    if grep -q "trycloudflare.com" tunnel.log 2>/dev/null; then
+        URL=$(grep -oE "https://[a-z0-9-]+\.trycloudflare\.com" tunnel.log | head -n 1)
         if [ -n "$URL" ]; then
             echo ""
             echo "  ╔═══════════════════════════════════════════════════════════╗"
@@ -68,14 +71,19 @@ echo "[2/2] Creating Cloudflare tunnel..."
             echo "  ║  → Set this as VITE_API_BASE in Vercel dashboard          ║"
             echo "  ║  → Then redeploy the frontend                             ║"
             echo "  ║                                                           ║"
-            echo "  ║  API Docs: ${URL}/docs                                    ║"
-            echo "  ║  Local:    http://localhost:${PORT}/docs                   ║"
+            echo "  ║  API Docs: ${URL}/docs"
+            echo "  ║  Local:    http://localhost:${PORT}/docs"
             echo "  ╚═══════════════════════════════════════════════════════════╝"
             echo ""
+            break
         fi
     fi
-done &
-TUNNEL_PID=$!
+    sleep 1
+done
+
+if [ -z "$URL" ]; then
+    echo "  ⚠️ Could not extract tunnel URL. Check tunnel.log."
+fi
 
 # Cleanup on Ctrl+C
 trap "echo ''; echo 'Shutting down...'; kill $SERVER_PID $TUNNEL_PID 2>/dev/null; exit 0" INT TERM
