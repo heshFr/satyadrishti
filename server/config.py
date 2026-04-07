@@ -46,6 +46,24 @@ CORS_ORIGINS = os.environ.get(
 HOST = os.environ.get("SATYA_HOST", "0.0.0.0")
 PORT = int(os.environ.get("SATYA_PORT", "8000"))
 
+# ─── Remote Inference (Zero-Cost Architecture) ───
+# When set, the API gateway forwards ML inference to a remote worker
+# (e.g. HuggingFace Spaces) instead of loading models locally.
+# This keeps the gateway under 512MB RAM for free-tier hosting.
+INFERENCE_URL = os.environ.get("INFERENCE_URL", "")  # e.g. "https://user-satyadrishti.hf.space"
+INFERENCE_SECRET = os.environ.get("INFERENCE_SECRET", "")
+
+# ─── Email (SMTP) ───
+SMTP_HOST = os.environ.get("SMTP_HOST", "")
+SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
+SMTP_USER = os.environ.get("SMTP_USER", "")
+SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
+SMTP_FROM = os.environ.get("SMTP_FROM", "noreply@satyadrishti.in")
+SMTP_TLS = os.environ.get("SMTP_TLS", "true").lower() == "true"
+
+# ─── Frontend URL (for email links) ───
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000")
+
 # ─── Upload Limits (bytes) ───
 MAX_AUDIO_SIZE = int(os.environ.get("SATYA_MAX_AUDIO_MB", "50")) * 1024 * 1024
 MAX_VIDEO_SIZE = int(os.environ.get("SATYA_MAX_VIDEO_MB", "200")) * 1024 * 1024

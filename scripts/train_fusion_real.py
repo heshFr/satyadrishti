@@ -7,8 +7,8 @@ the fusion network for production-quality predictions.
 
 Strategy:
   1. Extract text embeddings from coercion dataset (DeBERTaV3 + LoRA)
-  2. Extract video embeddings from deepfake frames (ViT-B/16 spatial)
-  3. For audio, use the AST model on synthetic audio to generate
+  2. Extract video embeddings from deepfake frames (prithivMLmods ViT)
+  3. For audio, use the Wav2Vec2 model on synthetic audio to generate
      embeddings from the model's actual distribution (since we lack
      naturally paired audio-video data)
   4. Create labeled triplets by combining real embeddings
@@ -107,24 +107,14 @@ def extract_text_embeddings(output_path: Path, data_path: Path, max_samples: int
 
 
 def extract_video_embeddings(output_path: Path, max_samples: int = 2000):
-    """Extract real video embeddings from deepfake frames using spatial ViT-B/16."""
+    """Extract real video embeddings from deepfake frames using HuggingFace ViT detector."""
     print("\n[2/3] Extracting video embeddings...")
 
-    from engine.video.spatial_vit import DeepfakeViT
+    from engine.image_forensics.vit_detector import ViTDetector
     import cv2
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    ckpt_path = str(PROJECT_ROOT / "models" / "video" / "vit_spatial_v2_best.pt")
-
-    model = DeepfakeViT(num_classes=2, pretrained=False)
-    if os.path.exists(ckpt_path):
-        ckpt = torch.load(ckpt_path, map_location=device, weights_only=False)
-        model.load_state_dict(ckpt["model_state_dict"])
-        print(f"  Loaded weights from {ckpt_path}")
-    else:
-        print("  Warning: Using untrained model (no checkpoint found)")
-
-    model.to(device).eval()
+    detector = ViTDetector()
+    print(f"  Loaded {detector.MODEL_NAME} on {detector.device}")
 
     # Load manifest
     if not DEEPFAKE_MANIFEST.exists():
@@ -147,9 +137,6 @@ def extract_video_embeddings(output_path: Path, max_samples: int = 2000):
 
     print(f"  Extracting from {len(frame_entries)} frames...")
 
-    IMAGENET_MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32)
-    IMAGENET_STD = np.array([0.229, 0.224, 0.225], dtype=np.float32)
-
     embeddings = []
     labels = []
 
@@ -158,17 +145,10 @@ def extract_video_embeddings(output_path: Path, max_samples: int = 2000):
             img = cv2.imread(path)
             if img is None:
                 continue
-            img = cv2.resize(img, (224, 224))
-            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-            img = img.astype(np.float32) / 255.0
-            img = (img - IMAGENET_MEAN) / IMAGENET_STD
-            img = img.transpose(2, 0, 1)  # (3, 224, 224)
-            tensor = torch.from_numpy(img).unsqueeze(0).float().to(device)
 
-            with torch.no_grad():
-                emb = model.extract_embedding(tensor)
-                embeddings.append(emb.cpu().squeeze(0).numpy())
-                labels.append(label)
+            emb = detector.extract_embedding(img)  # BGR input, (1, hidden_dim)
+            embeddings.append(emb.cpu().squeeze(0).numpy())
+            labels.append(label)
         except Exception:
             continue
 
@@ -191,9 +171,9 @@ def extract_video_embeddings(output_path: Path, max_samples: int = 2000):
 
 def extract_audio_embeddings(output_path: Path, n_samples: int = 2000):
     """
-    Extract audio embeddings from the AST model.
+    Extract audio embeddings from the Wav2Vec2 deepfake detector.
     Uses synthetic audio since we lack paired audio data,
-    but the embeddings come from the real AST encoder's actual distribution.
+    but the embeddings come from the real Wav2Vec2 encoder's actual distribution.
     """
     print("\n[3/3] Extracting audio embeddings...")
 
@@ -207,7 +187,7 @@ def extract_audio_embeddings(output_path: Path, n_samples: int = 2000):
     embeddings = []
     labels = []
 
-    print(f"  Generating {n_samples} audio embeddings from AST model...")
+    print(f"  Generating {n_samples} audio embeddings from Wav2Vec2 model...")
 
     for i in range(n_samples):
         # Create diverse synthetic audio:
@@ -356,7 +336,27 @@ def train(args):
     video_path = EMBEDDINGS_DIR / "video_embeddings.npz"
     audio_path = EMBEDDINGS_DIR / "audio_embeddings.npz"
 
-    if text_path.exists() and not args.force_extract:
+    # Check if cached embeddings came from old models (different dimensions)
+    # Video: old spatial_vit was 768d, new HuggingFace ViT is also 768d but different distribution
+    # Audio: old AST was 768d, new Wav2Vec2 is also 768d but different distribution
+    # Force re-extraction if a marker file indicates old model was used
+    model_marker = EMBEDDINGS_DIR / "model_versions.json"
+    current_versions = {
+        "audio": "MelodyMachine/Deepfake-audio-detection-V2",
+        "video": "prithivMLmods/Deep-Fake-Detector-v2-Model",
+        "text": "DeBERTaV3+LoRA",
+    }
+    needs_reextract = False
+    if model_marker.exists():
+        with open(model_marker) as f:
+            old_versions = json.load(f)
+        if old_versions != current_versions:
+            print("\n[!] Model versions changed since last extraction — forcing re-extraction")
+            needs_reextract = True
+
+    force = args.force_extract or needs_reextract
+
+    if text_path.exists() and not force:
         print("\n[Text] Loading cached embeddings...")
         data = np.load(text_path)
         text_embs, text_labels = data["embeddings"], data["labels"]
@@ -364,7 +364,7 @@ def train(args):
     else:
         text_embs, text_labels = extract_text_embeddings(text_path, COERCION_TRAIN, args.max_samples)
 
-    if video_path.exists() and not args.force_extract:
+    if video_path.exists() and not force:
         print("\n[Video] Loading cached embeddings...")
         data = np.load(video_path)
         video_embs, video_labels = data["embeddings"], data["labels"]
@@ -372,13 +372,17 @@ def train(args):
     else:
         video_embs, video_labels = extract_video_embeddings(video_path, args.max_samples)
 
-    if audio_path.exists() and not args.force_extract:
+    if audio_path.exists() and not force:
         print("\n[Audio] Loading cached embeddings...")
         data = np.load(audio_path)
         audio_embs, audio_labels = data["embeddings"], data["labels"]
         print(f"  Loaded {len(audio_embs)} audio embeddings")
     else:
         audio_embs, audio_labels = extract_audio_embeddings(audio_path, args.max_samples)
+
+    # Save model version marker
+    with open(model_marker, "w") as f:
+        json.dump(current_versions, f, indent=2)
 
     if args.extract_only:
         print("\n[Done] Embeddings extracted. Use --extract_only=False to train.")
@@ -535,8 +539,8 @@ def train(args):
         "val_accuracy": float(accuracy_score(all_labels, all_preds)),
         "trained_on": "real_embeddings",
         "embedding_sources": {
-            "audio": "AST-VoxCelebSpoof (synthetic waveforms)",
-            "video": "ViT-B/16 spatial v2 (deepfake frames)",
+            "audio": "Wav2Vec2 Deepfake-audio-detection-V2 (synthetic waveforms)",
+            "video": "prithivMLmods/Deep-Fake-Detector-v2-Model ViT (deepfake frames)",
             "text": "DeBERTaV3+LoRA (coercion dataset)",
         },
     }

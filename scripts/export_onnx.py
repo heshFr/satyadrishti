@@ -1,20 +1,20 @@
 """
 Satya Drishti — ONNX Export & INT8 Quantization
 =================================================
-Exports trained PyTorch models to ONNX format and applies dynamic
+Exports PyTorch models to ONNX format and applies dynamic
 INT8 quantization using ONNX Runtime for edge deployment.
 
 Supported models:
-  1. Image Forensics ViT-B/16 (image deepfake detection)
-  2. Video Spatial ViT-B/16 (face-level spatial artifact detection)
-  3. Video Temporal R3D-18 (temporal consistency analysis)
-  4. Audio AST (synthetic voice detection)
-  5. Text DeBERTaV3 + LoRA (coercion detection via Optimum — separate)
-  6. Cross-Attention Fusion Network (multimodal threat assessment)
+  1. Image Forensics ViT — prithivMLmods/Deep-Fake-Detector-v2-Model (HuggingFace)
+  2. Audio Wav2Vec2 — MelodyMachine/Deepfake-audio-detection-V2 (HuggingFace)
+  3. Video Spatial ViT-B/16 (local checkpoint)
+  4. Video Temporal R3D-18 (local checkpoint)
+  5. Cross-Attention Fusion Network (local checkpoint)
+  6. Text DeBERTaV3 + LoRA (via HuggingFace Optimum — separate)
 
 Usage:
     python -m scripts.export_onnx                    # Export all
-    python -m scripts.export_onnx --model spatial    # Export one model
+    python -m scripts.export_onnx --model forensics  # Export one model
     python -m scripts.export_onnx --benchmark        # Export + benchmark
 """
 
@@ -106,29 +106,24 @@ def _export_and_quantize(
 
 
 def export_forensics_vit() -> tuple[str | None, str | None]:
-    """Export the image forensics ViT-B/16 (HuggingFace ViTForImageClassification)."""
-    print("\n[1/5] Image Forensics ViT-B/16")
+    """Export the image forensics ViT (prithivMLmods/Deep-Fake-Detector-v2-Model)."""
+    print("\n[1/5] Image Forensics ViT — Deep-Fake-Detector-v2")
 
     try:
-        from transformers import ViTForImageClassification
+        from transformers import AutoModelForImageClassification, AutoImageProcessor
 
-        pretrained_dir = os.path.join(MODEL_DIR, "image_forensics", "pretrained_vit")
-        model_source = pretrained_dir if os.path.isdir(pretrained_dir) else "google/vit-base-patch16-224-in21k"
-
-        model = ViTForImageClassification.from_pretrained(
-            model_source, num_labels=2, ignore_mismatched_sizes=True,
-        )
-
-        if os.path.exists(FORENSICS_CKPT):
-            ckpt = torch.load(FORENSICS_CKPT, map_location="cpu", weights_only=True)
-            state_dict = ckpt.get("model_state_dict", ckpt)
-            model.load_state_dict(state_dict)
-            print(f"  Loaded fine-tuned weights from {FORENSICS_CKPT}")
-        else:
-            print(f"  Warning: No fine-tuned weights at {FORENSICS_CKPT}")
-
+        model_name = "prithivMLmods/Deep-Fake-Detector-v2-Model"
+        model = AutoModelForImageClassification.from_pretrained(model_name)
+        processor = AutoImageProcessor.from_pretrained(model_name)
         model.eval()
-        dummy = torch.randn(1, 3, 224, 224)
+        print(f"  Loaded {model_name}")
+        print(f"  Labels: {model.config.id2label}")
+
+        # Create dummy input matching the processor output
+        dummy_image = np.random.randint(0, 255, (224, 224, 3), dtype=np.uint8)
+        inputs = processor(images=dummy_image, return_tensors="pt")
+        dummy = inputs["pixel_values"]
+
         out_path = os.path.join(EXPORT_DIR, "forensics", "forensics_vit.onnx")
 
         return _export_and_quantize(
@@ -197,66 +192,41 @@ def export_temporal_r3d() -> tuple[str | None, str | None]:
     )
 
 
-def export_ast_audio() -> tuple[str | None, str | None]:
+def export_audio_wav2vec2() -> tuple[str | None, str | None]:
     """
-    Export the AST audio spoof detector.
-    Uses the HuggingFace transformers ONNX export path.
+    Export the Wav2Vec2 audio deepfake detector.
+    Model: MelodyMachine/Deepfake-audio-detection-V2
     """
-    print("\n[4/5] Audio AST Spoof Detector")
+    print("\n[4/5] Audio Wav2Vec2 Deepfake Detector")
 
     try:
-        from transformers import ASTForAudioClassification, AutoFeatureExtractor
+        from transformers import Wav2Vec2ForSequenceClassification, AutoFeatureExtractor
 
-        model_name = "MattyB95/AST-VoxCelebSpoof-Synthetic-Voice-Detection"
-        model = ASTForAudioClassification.from_pretrained(model_name)
+        model_name = "MelodyMachine/Deepfake-audio-detection-V2"
+        model = Wav2Vec2ForSequenceClassification.from_pretrained(model_name)
         feature_extractor = AutoFeatureExtractor.from_pretrained(model_name)
         model.eval()
+        print(f"  Loaded {model_name}")
+        print(f"  Labels: {model.config.id2label}")
 
-        # Create dummy spectrogram input matching the feature extractor output
+        # Create dummy waveform input (2 seconds at 16kHz)
         dummy_waveform = np.random.randn(32000).astype(np.float32)
-        inputs = feature_extractor(dummy_waveform, sampling_rate=16000, return_tensors="pt")
+        inputs = feature_extractor(
+            dummy_waveform, sampling_rate=16000, return_tensors="pt", padding=True,
+        )
         dummy_input = inputs["input_values"]
 
-        out_path = os.path.join(EXPORT_DIR, "audio", "ast_spoof.onnx")
-        os.makedirs(os.path.dirname(out_path), exist_ok=True)
+        out_path = os.path.join(EXPORT_DIR, "audio", "wav2vec2_spoof.onnx")
 
-        torch.onnx.export(
-            model,
-            dummy_input,
-            out_path,
-            export_params=True,
-            opset_version=17,
-            do_constant_folding=True,
+        return _export_and_quantize(
+            model, dummy_input, out_path,
             input_names=["input_values"],
             output_names=["logits"],
-            dynamic_axes={"input_values": {0: "batch"}, "logits": {0: "batch"}},
-            dynamo=False,
+            dynamic_axes={
+                "input_values": {0: "batch", 1: "sequence"},
+                "logits": {0: "batch"},
+            },
         )
-
-        # Consolidate external data if present
-        ext_data = out_path + ".data"
-        if os.path.exists(ext_data):
-            print("  Consolidating external data into single ONNX file...")
-            onnx_model = onnx.load(out_path, load_external_data=True)
-            onnx.save(onnx_model, out_path)
-            if os.path.exists(ext_data):
-                os.remove(ext_data)
-        else:
-            onnx_model = onnx.load(out_path)
-
-        onnx.checker.check_model(onnx_model)
-        print(f"  ONNX export: {out_path} ({os.path.getsize(out_path) / 1024 / 1024:.1f} MB)")
-
-        int8_path = out_path.replace(".onnx", "_int8.onnx")
-        quantize_dynamic(
-            model_input=out_path,
-            model_output=int8_path,
-            weight_type=QuantType.QInt8,
-        )
-        print(f"  INT8 quantized: {int8_path} ({os.path.getsize(int8_path) / 1024 / 1024:.1f} MB)")
-
-        return out_path, int8_path
-
     except Exception as e:
         print(f"  Failed: {e}")
         return None, None
@@ -359,9 +329,9 @@ def benchmark_model(onnx_path: str, dummy_inputs: dict, num_runs: int = 50):
 
 EXPORTERS = {
     "forensics": export_forensics_vit,
+    "audio": export_audio_wav2vec2,
     "spatial": export_spatial_vit,
     "temporal": export_temporal_r3d,
-    "audio": export_ast_audio,
     "fusion": export_fusion,
 }
 
@@ -416,6 +386,7 @@ def main():
 
         bench_inputs = {
             "forensics": {"pixel_values": np.random.randn(1, 3, 224, 224).astype(np.float32)},
+            "audio": {"input_values": np.random.randn(1, 32000).astype(np.float32)},
             "spatial": {"frames": np.random.randn(1, 3, 224, 224).astype(np.float32)},
             "temporal": {"clips": np.random.randn(1, 3, 16, 224, 224).astype(np.float32)},
             "fusion": {
