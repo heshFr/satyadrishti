@@ -38,9 +38,36 @@ from .routes.auth import router as auth_router
 from .routes.scans import router as scans_router
 from .routes.contact import router as contact_router
 from .routes.cases import router as cases_router
+from .routes.monitoring import router as monitoring_router
+from .routes.api_keys import router as api_keys_router
+from .routes.batch import router as batch_router
 from .rate_limiter import limiter
 from .logging_config import setup_logging
 from .config import CORS_ORIGINS, HOST, PORT, MAX_AUDIO_SIZE, MAX_VIDEO_SIZE, MAX_MEDIA_SIZE, MAX_TEXT_LENGTH
+from .validators import validate_file, with_timeout, ValidationError, detect_file_type, FileType, ANALYSIS_TIMEOUTS
+from .middleware import RequestTrackingMiddleware, SecurityHeadersMiddleware
+from .accuracy_tracker import accuracy_tracker
+from .audit_archive import archive_file, archive_bytes
+
+# ─── Concurrency Controls ───
+# Limit concurrent ML analyses to prevent OOM on GPU/CPU.
+# Configurable via environment variable (default: 3 concurrent analyses).
+_MAX_CONCURRENT = int(os.environ.get("SATYA_MAX_CONCURRENT_ANALYSES", "3"))
+_analysis_semaphore = asyncio.Semaphore(_MAX_CONCURRENT)
+from . import metrics as app_metrics
+
+# Optional: Conversation-level analysis for WebSocket call protection
+try:
+    from engine.text.conversation_analyzer import ConversationAnalyzer
+    HAS_CONVERSATION_ANALYZER = True
+except ImportError:
+    HAS_CONVERSATION_ANALYZER = False
+
+try:
+    from engine.text.sentiment_trajectory import SentimentTrajectory
+    HAS_SENTIMENT_TRAJECTORY = True
+except ImportError:
+    HAS_SENTIMENT_TRAJECTORY = False
 
 log = logging.getLogger("satyadrishti.api")
 setup_logging()
@@ -77,16 +104,36 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,
+    allow_origin_regex=r"^https?://(.*\.)?vercel\.app|http://localhost:\d+",
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
+
+# Middleware (order matters: outermost first)
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(RequestTrackingMiddleware)
 
 # Include routers
 app.include_router(auth_router)
 app.include_router(scans_router)
 app.include_router(contact_router)
 app.include_router(cases_router)
+app.include_router(monitoring_router)
+app.include_router(api_keys_router)
+app.include_router(batch_router)
+
+
+# ─── Validation Error Handler ───
+
+@app.exception_handler(ValidationError)
+async def validation_error_handler(request: Request, exc: ValidationError):
+    """Convert ValidationError to proper HTTP response."""
+    from fastapi.responses import JSONResponse
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.message},
+    )
 
 
 # ─── Helpers ───
@@ -114,6 +161,16 @@ MIME_TO_EXTENSION = {
 def _safe_extension(content_type: str) -> str:
     """Get safe file extension from MIME type (never from user filename)."""
     return MIME_TO_EXTENSION.get(content_type, mimetypes.guess_extension(content_type) or ".bin")
+
+
+def _cleanup_gpu():
+    """Free GPU memory after analysis to prevent OOM on subsequent requests."""
+    try:
+        import torch
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+    except ImportError:
+        pass
 
 
 async def _read_with_limit(file: UploadFile, max_bytes: int, label: str) -> bytes:
@@ -178,10 +235,12 @@ async def analyze_text(req: Request):
     if len(input_text) > MAX_TEXT_LENGTH:
         raise HTTPException(status_code=400, detail=f"Text too long. Maximum {MAX_TEXT_LENGTH} characters.")
 
+    t0 = time.time()
     result = await engine.analyze_text(input_text)
     if "error" in result:
         raise HTTPException(status_code=500, detail=result["error"])
 
+    app_metrics.record_analysis_result("text", result, time.time() - t0)
     return result
 
 
@@ -189,10 +248,11 @@ async def analyze_text(req: Request):
 async def analyze_audio(request: Request, file: UploadFile = File(...)):
     """Upload audio for AST synthetic voice detection."""
     limiter.check(request, limit=20, window=60, endpoint="analyze_audio")
-    if not file.content_type or not file.content_type.startswith("audio/"):
-        raise HTTPException(status_code=400, detail="Invalid audio file type")
 
     data = await _read_with_limit(file, MAX_AUDIO_SIZE, "Audio file")
+
+    # Magic-byte validation (replaces MIME-type-only check)
+    validate_file(data, "audio", declared_mime=file.content_type)
 
     # Validate the audio data is actually readable
     import io
@@ -202,10 +262,18 @@ async def analyze_audio(request: Request, file: UploadFile = File(...)):
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid audio file. Could not read audio data.")
 
-    result = await engine.analyze_audio(data)
-    if "error" in result:
-        raise HTTPException(status_code=500, detail=result["error"])
-    return result
+    archive_bytes(data, "audio", _safe_extension(file.content_type or "audio/wav"), file.filename)
+
+    async with _analysis_semaphore:
+        t0 = time.time()
+        try:
+            result = await with_timeout(engine.analyze_audio(data), "audio")
+        finally:
+            _cleanup_gpu()
+        if "error" in result:
+            raise HTTPException(status_code=500, detail=result["error"])
+        app_metrics.record_analysis_result("audio", result, time.time() - t0)
+        return result
 
 
 @app.post("/api/analyze/video")
@@ -217,25 +285,34 @@ async def analyze_video(
 ):
     """Upload video for forensics + two-stream deepfake detection."""
     limiter.check(request, limit=10, window=60, endpoint="analyze_video")
-    if not file.content_type or not file.content_type.startswith("video/"):
-        raise HTTPException(status_code=400, detail="Invalid video file type")
 
-    ext = _safe_extension(file.content_type)
+    ext = _safe_extension(file.content_type or "video/mp4")
     with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as temp_file:
         # Stream copy with size limit
         total = 0
+        first_chunk = True
         while chunk := await file.read(1024 * 1024):
             total += len(chunk)
             if total > MAX_VIDEO_SIZE:
                 os.remove(temp_file.name)
                 raise HTTPException(status_code=413, detail=f"Video too large. Maximum size is {MAX_VIDEO_SIZE // (1024*1024)}MB.")
+            # Magic-byte validation on first chunk
+            if first_chunk:
+                validate_file(chunk, "video", declared_mime=file.content_type)
+                first_chunk = False
             temp_file.write(chunk)
         temp_path = temp_file.name
 
     try:
-        result = await engine.analyze_video(temp_path)
-        if "error" in result:
-            raise HTTPException(status_code=500, detail=result["error"])
+        async with _analysis_semaphore:
+            t0 = time.time()
+            try:
+                result = await with_timeout(engine.analyze_video(temp_path), "video")
+            finally:
+                _cleanup_gpu()
+            if "error" in result:
+                raise HTTPException(status_code=500, detail=result["error"])
+            app_metrics.record_analysis_result("video", result, time.time() - t0)
 
         scan_id = None
         if current_user:
@@ -255,6 +332,7 @@ async def analyze_video(
 
         return {**result, "scan_id": scan_id}
     finally:
+        archive_file(temp_path, "video", file.filename, str(scan_id), str(current_user.id) if current_user else None)
         if os.path.exists(temp_path):
             os.remove(temp_path)
 
@@ -282,26 +360,36 @@ async def analyze_multimodal(
 
     try:
         if audio:
-            if not audio.content_type or not audio.content_type.startswith("audio/"):
-                raise HTTPException(status_code=400, detail="Invalid audio file type")
             audio_data = await _read_with_limit(audio, MAX_AUDIO_SIZE, "Audio file")
+            validate_file(audio_data, "audio", declared_mime=audio.content_type)
 
         if video:
-            if not video.content_type or not video.content_type.startswith("video/"):
-                raise HTTPException(status_code=400, detail="Invalid video file type")
-            ext = _safe_extension(video.content_type)
+            video_bytes = await _read_with_limit(video, MAX_VIDEO_SIZE, "Video file")
+            validate_file(video_bytes[:4096], "video", declared_mime=video.content_type)
+            ext = _safe_extension(video.content_type or "video/mp4")
             with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as temp_file:
-                shutil.copyfileobj(video.file, temp_file)
+                temp_file.write(video_bytes)
                 video_path = temp_file.name
 
-        result = await engine.analyze_multimodal(
-            audio_data=audio_data,
-            video_path=video_path,
-            text=text,
-        )
+        async with _analysis_semaphore:
+            try:
+                result = await with_timeout(
+                    engine.analyze_multimodal(
+                        audio_data=audio_data,
+                        video_path=video_path,
+                        text=text,
+                    ),
+                    "multimodal",
+                )
+            finally:
+                _cleanup_gpu()
 
         return result
     finally:
+        if audio_data:
+            archive_bytes(audio_data, "audio", ".wav", audio.filename if audio else None)
+        if video_path:
+            archive_file(video_path, "video", video.filename if video else None)
         if video_path and os.path.exists(video_path):
             os.remove(video_path)
 
@@ -318,32 +406,55 @@ async def analyze_media(
     Handles images (forensics pipeline) and videos (forensics + deepfake detection).
     """
     limiter.check(request, limit=15, window=60, endpoint="analyze_media")
-    if file.content_type not in ALLOWED_MEDIA_TYPES:
-        raise HTTPException(status_code=400, detail=f"Unsupported file type: {file.content_type}")
 
     # Stream to temp file with size limit
-    ext = _safe_extension(file.content_type)
+    ext = _safe_extension(file.content_type or "application/octet-stream")
     with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as temp_file:
         total = 0
+        detected_type = None
         while chunk := await file.read(1024 * 1024):
             total += len(chunk)
             if total > MAX_MEDIA_SIZE:
                 os.remove(temp_file.name)
                 raise HTTPException(status_code=413, detail=f"File too large. Maximum size is {MAX_MEDIA_SIZE // (1024*1024)}MB.")
+            # Magic-byte validation on first chunk
+            if detected_type is None:
+                _, detected_type = validate_file(chunk, "media", declared_mime=file.content_type)
             temp_file.write(chunk)
         temp_path = temp_file.name
 
     try:
-        if file.content_type.startswith("image/"):
-            # Verify the image is actually valid before sending to ML
-            import cv2 as _cv2
-            temp_check = _cv2.imread(temp_path)
-            if temp_check is None:
-                os.remove(temp_path)
-                raise HTTPException(status_code=400, detail="Invalid image file. Could not decode image data.")
-            result = await engine.analyze_media(temp_path)
-        else:
-            result = await engine.analyze_video(temp_path)
+        t0 = time.time()
+        is_image = detected_type == FileType.IMAGE if detected_type else (file.content_type or "").startswith("image/")
+        is_document = ext.lower() in (".pdf",) or (file.content_type or "").startswith("application/pdf")
+        modality_label = "document" if is_document else ("image" if is_image else "video")
+        app_metrics.active_analyses.inc(labels={"modality": modality_label})
+
+        async with _analysis_semaphore:
+            try:
+                if is_document:
+                    # Phase 8: Document forensics
+                    doc_forensics = engine._get_document_forensics()
+                    if doc_forensics:
+                        result = await asyncio.get_event_loop().run_in_executor(
+                            None, doc_forensics.analyze, temp_path
+                        )
+                    else:
+                        result = {"verdict": "error", "confidence": 0, "error": "Document forensics not available"}
+                elif is_image:
+                    # Verify the image is actually valid before sending to ML
+                    import cv2 as _cv2
+                    temp_check = _cv2.imread(temp_path)
+                    if temp_check is None:
+                        os.remove(temp_path)
+                        raise HTTPException(status_code=400, detail="Invalid image file. Could not decode image data.")
+                    result = await with_timeout(engine.analyze_media(temp_path), "image")
+                else:
+                    result = await with_timeout(engine.analyze_video(temp_path), "video")
+            finally:
+                _cleanup_gpu()
+
+        app_metrics.active_analyses.dec(labels={"modality": modality_label})
 
         if "error" in result:
             raise HTTPException(status_code=500, detail=result["error"])
@@ -390,10 +501,25 @@ async def analyze_media(
             await db.refresh(scan)
             scan_id = scan.id
 
+        # Record metrics and accuracy tracking
+        latency = time.time() - t0
+        app_metrics.record_analysis_result(modality_label, result, latency)
+        accuracy_tracker.record_prediction(
+            scan_id=scan_id or "anon",
+            modality=modality_label,
+            verdict=final_verdict,
+            confidence=result.get("confidence", 0.0),
+            raw_scores=result.get("raw_scores", {}),
+            forensic_checks=result.get("forensic_checks", []),
+            details=result.get("details", {}),
+        )
+
         return {**result, "scan_id": scan_id}
     finally:
+        archive_file(temp_path, modality_label, file.filename, str(scan_id), str(current_user.id) if current_user else None)
         if os.path.exists(temp_path):
             os.remove(temp_path)
+
 
 
 # ─── Voice Print Enrollment Endpoints ───
@@ -405,9 +531,22 @@ async def enroll_voice_print(
     file: UploadFile = File(...),
     name: str = Form(...),
     relationship: str = Form("unknown"),
+    consent: str = Form(...),
 ):
-    """Enroll a family member's voice for speaker verification."""
+    """Enroll a family member's voice for speaker verification. Requires explicit consent."""
     limiter.check(request, limit=5, window=60, endpoint="enroll_voice")
+
+    if consent.lower() not in ("true", "yes", "1"):
+        raise HTTPException(
+            status_code=400,
+            detail="Voice enrollment requires explicit consent. "
+            "Please confirm that you have permission to enroll this voice print.",
+        )
+
+    # Sanitize name — prevent path traversal and injection
+    import re
+    if not re.match(r'^[a-zA-Z0-9_ -]{1,100}$', name):
+        raise HTTPException(status_code=400, detail="Name must be 1-100 alphanumeric characters, spaces, hyphens, or underscores only")
 
     if not file.content_type or not file.content_type.startswith("audio/"):
         raise HTTPException(status_code=400, detail="Please upload an audio file")
@@ -433,6 +572,10 @@ async def list_voice_prints():
 @app.delete("/api/voice-prints/{name}")
 async def delete_voice_print(name: str):
     """Remove an enrolled voice print."""
+    # Path traversal protection
+    if "/" in name or "\\" in name or ".." in name or "\x00" in name:
+        raise HTTPException(status_code=400, detail="Invalid voice print name")
+
     verifier = await engine.get_speaker_verifier()
     if not verifier:
         raise HTTPException(status_code=500, detail="Speaker verification not available")
@@ -461,6 +604,7 @@ async def websocket_endpoint(websocket: WebSocket):
       Server -> Client: { "type": "call_summary", ... }
     """
     await websocket.accept()
+    app_metrics.active_websockets.inc()
     log.info("WebSocket client connected for call protection.")
 
     # Call state tracking
@@ -501,6 +645,15 @@ async def websocket_endpoint(websocket: WebSocket):
                     call_state["temporal_tracker"] = TemporalTracker()
                 except ImportError:
                     call_state["temporal_tracker"] = None
+
+                # Initialize conversation-level analyzers
+                call_state["conversation_analyzer"] = (
+                    ConversationAnalyzer() if HAS_CONVERSATION_ANALYZER else None
+                )
+                call_state["sentiment_trajectory"] = (
+                    SentimentTrajectory() if HAS_SENTIMENT_TRAJECTORY else None
+                )
+
                 await websocket.send_json({"type": "call_started", "status": "monitoring"})
 
             elif msg_type == "audio" and data.get("data"):
@@ -548,7 +701,7 @@ async def websocket_endpoint(websocket: WebSocket):
                         # soundfile not available — fall back to single chunk
                         analysis_bytes = audio_bytes
 
-                    # === PIPELINE 1: 7-Layer Voice Clone Detection ===
+                    # === PIPELINE 1: 10-Layer Voice Clone Detection ===
                     audio_result = await engine.analyze_audio(analysis_bytes)
                     is_spoof = False
                     audio_conf = 0
@@ -556,11 +709,12 @@ async def websocket_endpoint(websocket: WebSocket):
                     if "error" not in audio_result:
                         verdict = audio_result.get("verdict", "authentic")
                         audio_conf = audio_result.get("confidence", 0)
+                        details = audio_result.get("details", {})
 
                         # ── Decision Safety Layer (Live WebSocket) ──
                         anomalies = [c for c in audio_result.get("forensic_checks", []) if c.get("status") in ("fail", "warn")]
                         anomaly_count = len([c for c in anomalies if c.get("status") == "fail"])
-                        
+
                         if details.get("biological_veto") or anomaly_count >= 2:
                             verdict = "spoof"
                         elif audio_conf < 60:
@@ -612,15 +766,14 @@ async def websocket_endpoint(websocket: WebSocket):
                             "ensemble_probability": round(ensemble_prob, 4) if ensemble_prob else None,
                             "threat_escalation": round(call_state["threat_escalation"], 3),
                         }
-                        # Include 7-layer forensic details if available
+                        # Include 10-layer forensic details if available
                         if "forensic_checks" in audio_result:
                             ws_payload["forensic_checks"] = audio_result["forensic_checks"]
                         if "raw_scores" in audio_result:
                             ws_payload["raw_scores"] = audio_result["raw_scores"]
-                        details = audio_result.get("details", {})
                         if "layers_active" in details:
                             ws_payload["layers_active"] = details["layers_active"]
-                            ws_payload["layers_total"] = details.get("layers_total", 9)
+                            ws_payload["layers_total"] = details.get("layers_total", 10)
                         if "per_analyzer" in details:
                             ws_payload["per_analyzer"] = details["per_analyzer"]
                         if details.get("biological_veto"):
@@ -697,7 +850,7 @@ async def websocket_endpoint(websocket: WebSocket):
                                 call_state["threat_escalation"] = min(1.0,
                                     call_state["threat_escalation"] + (text_conf / 100) * 0.25)
 
-                            await websocket.send_json({
+                            ws_text_payload = {
                                 "type": "analysis_result",
                                 "modality": "text",
                                 "verdict": text_result.get("verdict", "safe"),
@@ -706,7 +859,54 @@ async def websocket_endpoint(websocket: WebSocket):
                                 "language": text_result.get("language", detected_lang),
                                 "threat_escalation": round(call_state["threat_escalation"], 3),
                                 "auto_transcribed": True,
-                            })
+                            }
+
+                            # Feed to conversation analyzer (multi-turn tracking)
+                            conv_analyzer = call_state.get("conversation_analyzer")
+                            if conv_analyzer:
+                                try:
+                                    coercion_score = text_conf / 100 if is_threat else 0.0
+                                    conv_result = conv_analyzer.add_message(
+                                        text=transcribed_text,
+                                        speaker="caller",
+                                        per_message_score=coercion_score,
+                                        per_message_label=text_result.get("verdict", "safe"),
+                                    )
+                                    ws_text_payload["conversation"] = {
+                                        "stage": conv_result.get("current_stage", "unknown"),
+                                        "threat_level": round(conv_result.get("conversation_threat_level", 0), 3),
+                                        "escalation_rate": round(conv_result.get("escalation_rate", 0), 3),
+                                        "alert_level": conv_result.get("alert_level", "safe"),
+                                        "info_extraction_attempts": conv_result.get("information_extraction_attempts", [])[-2:],
+                                    }
+                                    # Boost threat escalation if conversation analysis flags danger
+                                    conv_threat = conv_result.get("conversation_threat_level", 0)
+                                    if conv_threat > 0.6:
+                                        call_state["threat_escalation"] = min(1.0,
+                                            call_state["threat_escalation"] + conv_threat * 0.15)
+                                except Exception as e:
+                                    log.debug("Conversation analyzer error: %s", e)
+
+                            # Feed to sentiment trajectory
+                            sent_tracker = call_state.get("sentiment_trajectory")
+                            if sent_tracker:
+                                try:
+                                    sent_result = sent_tracker.analyze_message(transcribed_text)
+                                    ws_text_payload["sentiment"] = {
+                                        "emotion": sent_result.get("emotion", "neutral"),
+                                        "valence": round(sent_result.get("valence", 0), 3),
+                                        "arousal": round(sent_result.get("arousal", 0), 3),
+                                        "manipulation_score": round(sent_result.get("manipulation_score", 0), 3),
+                                    }
+                                    # High manipulation trajectory boosts escalation
+                                    manip = sent_result.get("manipulation_score", 0)
+                                    if manip > 0.5:
+                                        call_state["threat_escalation"] = min(1.0,
+                                            call_state["threat_escalation"] + manip * 0.1)
+                                except Exception as e:
+                                    log.debug("Sentiment trajectory error: %s", e)
+
+                            await websocket.send_json(ws_text_payload)
 
                     # === PIPELINE 3: Speaker Verification ===
                     verify_result = await engine.verify_speaker(audio_bytes)
@@ -760,7 +960,7 @@ async def websocket_endpoint(websocket: WebSocket):
                         else:
                             call_state["threat_escalation"] *= ESCALATION_DECAY
 
-                        await websocket.send_json({
+                        ws_text_payload = {
                             "type": "analysis_result",
                             "modality": "text",
                             "verdict": result.get("verdict", "safe"),
@@ -768,8 +968,51 @@ async def websocket_endpoint(websocket: WebSocket):
                             "detected_patterns": result.get("detected_patterns", []),
                             "language": result.get("language", "en"),
                             "threat_escalation": round(call_state["threat_escalation"], 3),
-                        })
+                        }
 
+                        # Feed to conversation analyzer
+                        conv_analyzer = call_state.get("conversation_analyzer")
+                        if conv_analyzer:
+                            try:
+                                coercion_score = conf if is_threat else 0.0
+                                conv_result = conv_analyzer.add_message(
+                                    text=text_data,
+                                    speaker="caller",
+                                    per_message_score=coercion_score,
+                                    per_message_label=result.get("verdict", "safe"),
+                                )
+                                ws_text_payload["conversation"] = {
+                                    "stage": conv_result.get("current_stage", "unknown"),
+                                    "threat_level": round(conv_result.get("conversation_threat_level", 0), 3),
+                                    "escalation_rate": round(conv_result.get("escalation_rate", 0), 3),
+                                    "alert_level": conv_result.get("alert_level", "safe"),
+                                }
+                                conv_threat = conv_result.get("conversation_threat_level", 0)
+                                if conv_threat > 0.6:
+                                    call_state["threat_escalation"] = min(1.0,
+                                        call_state["threat_escalation"] + conv_threat * 0.15)
+                            except Exception as e:
+                                log.debug("Conversation analyzer error: %s", e)
+
+                        # Feed to sentiment trajectory
+                        sent_tracker = call_state.get("sentiment_trajectory")
+                        if sent_tracker:
+                            try:
+                                sent_result = sent_tracker.analyze_message(text_data)
+                                ws_text_payload["sentiment"] = {
+                                    "emotion": sent_result.get("emotion", "neutral"),
+                                    "valence": round(sent_result.get("valence", 0), 3),
+                                    "arousal": round(sent_result.get("arousal", 0), 3),
+                                    "manipulation_score": round(sent_result.get("manipulation_score", 0), 3),
+                                }
+                                manip = sent_result.get("manipulation_score", 0)
+                                if manip > 0.5:
+                                    call_state["threat_escalation"] = min(1.0,
+                                        call_state["threat_escalation"] + manip * 0.1)
+                            except Exception as e:
+                                log.debug("Sentiment trajectory error: %s", e)
+
+                        await websocket.send_json(ws_text_payload)
                         await _check_and_send_alert(websocket, call_state)
 
                 except Exception as e:
@@ -857,6 +1100,30 @@ async def websocket_endpoint(websocket: WebSocket):
                 if recording_path:
                     summary["recording_path"] = recording_path
 
+                # Include conversation analysis summary
+                conv_analyzer = call_state.get("conversation_analyzer")
+                if conv_analyzer and conv_analyzer.history:
+                    summary["conversation_analysis"] = {
+                        "messages_analyzed": len(conv_analyzer.history),
+                        "stages_detected": list(set(conv_analyzer.stage_history)),
+                        "peak_threat_level": round(max(conv_analyzer.threat_trajectory) if conv_analyzer.threat_trajectory else 0, 3),
+                        "info_extraction_attempts": conv_analyzer.info_extraction_attempts[-5:],
+                    }
+
+                # Include sentiment trajectory summary
+                sent_tracker = call_state.get("sentiment_trajectory")
+                if sent_tracker and sent_tracker.valence_history:
+                    summary["sentiment_analysis"] = {
+                        "messages_tracked": len(sent_tracker.valence_history),
+                        "final_emotion": sent_tracker.emotion_history[-1] if sent_tracker.emotion_history else "neutral",
+                        "valence_trend": round(
+                            (sent_tracker.valence_history[-1] - sent_tracker.valence_history[0])
+                            if len(sent_tracker.valence_history) > 1 else 0, 3
+                        ),
+                        "peak_arousal": round(max(sent_tracker.arousal_history) if sent_tracker.arousal_history else 0, 3),
+                        "emotion_sequence": sent_tracker.emotion_history[-10:],
+                    }
+
                 await websocket.send_json(summary)
                 call_state["active"] = False
 
@@ -866,6 +1133,7 @@ async def websocket_endpoint(websocket: WebSocket):
     except Exception as e:
         log.info("WebSocket disconnected: %s", e)
     finally:
+        app_metrics.active_websockets.dec()
         try:
             await websocket.close()
         except Exception:
