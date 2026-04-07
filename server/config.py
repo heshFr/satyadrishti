@@ -20,6 +20,13 @@ if _raw_db_url:
         _raw_db_url = _raw_db_url.replace("postgres://", "postgresql+asyncpg://", 1)
     elif _raw_db_url.startswith("postgresql://"):
         _raw_db_url = _raw_db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    # Neon/psycopg2 use ?sslmode=require, but asyncpg uses ?ssl=require.
+    # Rewrite the query parameter so the same DSN works for both drivers.
+    if "sslmode=" in _raw_db_url:
+        _raw_db_url = _raw_db_url.replace("sslmode=require", "ssl=require")
+        _raw_db_url = _raw_db_url.replace("sslmode=verify-full", "ssl=verify-full")
+        _raw_db_url = _raw_db_url.replace("sslmode=prefer", "ssl=prefer")
+        _raw_db_url = _raw_db_url.replace("sslmode=disable", "ssl=disable")
     DATABASE_URL = _raw_db_url
 else:
     DATABASE_URL = f"sqlite+aiosqlite:///{DB_PATH}"
