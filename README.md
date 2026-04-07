@@ -65,7 +65,7 @@ pip install -e ".[dev]"
 ### 2. Start the Backend Server
 
 ```bash
-python -m server.app
+
 ```
 
 The API server starts on `http://localhost:8000`. API docs are available at `/docs` (Swagger UI) and `/redoc`.
@@ -91,29 +91,29 @@ The frontend starts on `http://localhost:3000`. Open it in your browser.
 
 ## AI Models
 
-| Engine | Model | Input | Output |
-|--------|-------|-------|--------|
-| Audio | Audio Spectrogram Transformer (AST) | Raw waveform 16kHz | Bonafide/Spoof + 768d embedding |
-| Video | ViT-B/16 (spatial) + R3D-18 (temporal) | 16 frames @ 224x224 | Real/Fake classification |
-| Text | DeBERTaV3 + LoRA (r=16, alpha=32) | Text up to 512 tokens | 4-class coercion detection |
-| Fusion | Cross-Attention Transformer | Projected 256d embeddings | Combined threat score |
-| Image | ViT-B/16 + ELA + Frequency + Metadata | Single image | 5-check forensic analysis |
+| Engine | Model                                  | Input                     | Output                          |
+| ------ | -------------------------------------- | ------------------------- | ------------------------------- |
+| Audio  | Audio Spectrogram Transformer (AST)    | Raw waveform 16kHz        | Bonafide/Spoof + 768d embedding |
+| Video  | ViT-B/16 (spatial) + R3D-18 (temporal) | 16 frames @ 224x224       | Real/Fake classification        |
+| Text   | DeBERTaV3 + LoRA (r=16, alpha=32)      | Text up to 512 tokens     | 4-class coercion detection      |
+| Fusion | Cross-Attention Transformer            | Projected 256d embeddings | Combined threat score           |
+| Image  | ViT-B/16 + ELA + Frequency + Metadata  | Single image              | 5-check forensic analysis       |
 
 Model weights (`.pt`, `.onnx`) are not included in the repository. See `scripts/` for training scripts and `configs/` for training configurations.
 
 ## API Endpoints
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/analyze/media` | Upload file for forensic analysis |
-| POST | `/api/analyze/text` | Analyze text for coercion patterns |
-| POST | `/api/analyze/audio` | Analyze audio for voice deepfakes |
-| POST | `/api/analyze/video` | Analyze video for visual deepfakes |
-| POST | `/api/analyze/multimodal` | Multi-modal fusion analysis |
-| WS | `/ws/live` | Real-time streaming call protection |
-| GET | `/api/scans` | List scan history |
-| POST | `/api/cases` | Create investigation case |
-| POST | `/api/auth/login` | JWT authentication |
+| Method | Endpoint                  | Description                         |
+| ------ | ------------------------- | ----------------------------------- |
+| POST   | `/api/analyze/media`      | Upload file for forensic analysis   |
+| POST   | `/api/analyze/text`       | Analyze text for coercion patterns  |
+| POST   | `/api/analyze/audio`      | Analyze audio for voice deepfakes   |
+| POST   | `/api/analyze/video`      | Analyze video for visual deepfakes  |
+| POST   | `/api/analyze/multimodal` | Multi-modal fusion analysis         |
+| WS     | `/ws/live`                | Real-time streaming call protection |
+| GET    | `/api/scans`              | List scan history                   |
+| POST   | `/api/cases`              | Create investigation case           |
+| POST   | `/api/auth/login`         | JWT authentication                  |
 
 Full API documentation: `http://localhost:8000/docs`
 
