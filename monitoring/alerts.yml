@@ -1,0 +1,208 @@
+# Satya Drishti — Prometheus Alert Rules
+# =======================================
+# Wire these into Alertmanager (Slack/email/PagerDuty) for production paging.
+# Severity convention: page (wake oncall), warning (next-business-day), info (FYI).
+
+groups:
+  - name: satyadrishti.gateway.availability
+    interval: 30s
+    rules:
+      - alert: GatewayDown
+        expr: up{job="satyadrishti-gateway"} == 0
+        for: 2m
+        labels:
+          severity: page
+          service: gateway
+        annotations:
+          summary: "Satya Drishti gateway is unreachable"
+          description: |
+            Prometheus could not scrape the gateway at {{ $labels.instance }} for 2+ minutes.
+            Either the service is down, the host is unreachable, or /metrics is failing.
+          runbook: "Check Render dashboard → Logs. Common cause: free-tier sleep, OOM, or failed deploy."
+
+      - alert: InferenceWorkerDown
+        expr: up{job="satyadrishti-inference"} == 0
+        for: 5m
+        labels:
+          severity: page
+          service: inference
+        annotations:
+          summary: "ML inference worker (HF Spaces) is unreachable"
+          description: |
+            The HuggingFace Spaces worker has been unreachable for 5+ minutes.
+            All ML analysis endpoints will return errors until this recovers.
+          runbook: "https://huggingface.co/spaces/<user>/satyadrishti — check Logs tab."
+
+  - name: satyadrishti.gateway.errors
+    interval: 30s
+    rules:
+      - alert: HighErrorRate
+        # Error rate > 5% over 5 minutes (across all endpoints)
+        expr: |
+          (
+            sum(rate(satya_request_errors_total[5m]))
+            /
+            clamp_min(sum(rate(satya_requests_total[5m])), 0.001)
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: page
+          service: gateway
+        annotations:
+          summary: "Gateway error rate above 5% for 5 minutes"
+          description: |
+            Current error rate: {{ $value | humanizePercentage }}.
+            Investigate /api/monitoring/health/deep and recent deploy logs.
+          runbook: "Check Render logs and /api/monitoring/health/deep for failing components."
+
+      - alert: HighServerErrorRate
+        # 5xx specifically — distinguishes from client errors
+        expr: |
+          (
+            sum(rate(satya_requests_total{status=~"5.."}[5m]))
+            /
+            clamp_min(sum(rate(satya_requests_total[5m])), 0.001)
+          ) > 0.02
+        for: 3m
+        labels:
+          severity: page
+          service: gateway
+        annotations:
+          summary: "5xx error rate above 2% for 3 minutes"
+          description: "Server-side errors are reaching users at {{ $value | humanizePercentage }}."
+
+      - alert: ElevatedClientErrors
+        expr: |
+          sum(rate(satya_requests_total{status=~"4.."}[10m])) > 5
+        for: 10m
+        labels:
+          severity: warning
+          service: gateway
+        annotations:
+          summary: "Sustained 4xx burst (possible auth/abuse issue)"
+          description: |
+            Sustained 4xx errors at {{ $value }} req/s for 10 min.
+            Could indicate broken client, scraping, or rate-limit churn.
+
+  - name: satyadrishti.gateway.latency
+    interval: 30s
+    rules:
+      - alert: HighRequestLatency
+        # P95 latency above 30 seconds (this is generous because video analysis is slow)
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum(rate(satya_request_duration_seconds_bucket[5m])) by (le, endpoint)
+          ) > 30
+        for: 10m
+        labels:
+          severity: warning
+          service: gateway
+        annotations:
+          summary: "P95 latency on {{ $labels.endpoint }} above 30s"
+          description: |
+            P95 = {{ $value }}s. Check inference worker load,
+            SATYA_MAX_CONCURRENT_ANALYSES setting, or model-specific regression.
+
+      - alert: ExtremeRequestLatency
+        # P99 above 60s on the analyze endpoints — pages immediately
+        expr: |
+          histogram_quantile(
+            0.99,
+            sum(rate(satya_request_duration_seconds_bucket{endpoint=~"/api/analyze/.*"}[5m])) by (le, endpoint)
+          ) > 60
+        for: 5m
+        labels:
+          severity: page
+          service: gateway
+        annotations:
+          summary: "P99 latency on {{ $labels.endpoint }} > 60s"
+          description: "Users are likely timing out. P99 = {{ $value }}s."
+
+  - name: satyadrishti.engine.health
+    interval: 30s
+    rules:
+      - alert: ModelNotLoaded
+        # If a critical model gauge is 0, it failed to load
+        expr: satya_model_loaded < 1
+        for: 5m
+        labels:
+          severity: page
+          service: inference
+        annotations:
+          summary: "Model {{ $labels.model }} is not loaded"
+          description: "Inference worker reports model {{ $labels.model }} as unloaded for 5+ min."
+
+      - alert: HighInferenceLatency
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum(rate(satya_engine_inference_seconds_bucket[5m])) by (le, modality)
+          ) > 20
+        for: 10m
+        labels:
+          severity: warning
+          service: inference
+        annotations:
+          summary: "P95 inference time for {{ $labels.modality }} > 20s"
+          description: "Engine {{ $labels.modality }} P95 = {{ $value }}s — possible CPU starvation on Spaces worker."
+
+      - alert: AnalysisQueueBacklog
+        # Active analyses sustained at the concurrency cap means requests are queueing
+        expr: max(satya_active_analyses) >= 2
+        for: 15m
+        labels:
+          severity: warning
+          service: gateway
+        annotations:
+          summary: "Concurrent analysis slots saturated for 15 min"
+          description: |
+            satya_active_analyses has been pinned at the SATYA_MAX_CONCURRENT_ANALYSES
+            limit. Consider raising the limit or scaling the worker.
+
+  - name: satyadrishti.accuracy
+    interval: 60s
+    rules:
+      - alert: HighFalsePositiveRate
+        # Confirmed user feedback says we're flagging real content too often
+        expr: |
+          sum(rate(satya_false_positives_total[1h]))
+          /
+          clamp_min(sum(rate(satya_verdict_total[1h])), 0.001)
+          > 0.10
+        for: 30m
+        labels:
+          severity: warning
+          service: ml
+        annotations:
+          summary: "False positive rate > 10% (1h window)"
+          description: |
+            Users are reporting legitimate content as misclassified at {{ $value | humanizePercentage }}.
+            Check accuracy_tracker dashboard at /api/monitoring/accuracy.
+
+      - alert: BiologicalVetoSpike
+        # Sudden surge in biological vetoes might indicate a model regression
+        expr: rate(satya_biological_veto_total[10m]) > 0.5
+        for: 10m
+        labels:
+          severity: info
+          service: ml
+        annotations:
+          summary: "Biological veto firing > 0.5/sec"
+          description: "Likely a real attack burst, but worth investigating for false positives."
+
+  - name: satyadrishti.resources
+    interval: 30s
+    rules:
+      - alert: WebSocketConnectionLeak
+        # Unusually high websocket count suggests connections aren't being closed
+        expr: satya_active_websockets > 100
+        for: 15m
+        labels:
+          severity: warning
+          service: gateway
+        annotations:
+          summary: "Active WebSockets > 100 for 15 min"
+          description: |
+            Current: {{ $value }}. Free-tier RAM is 512 MB; each idle WS costs ~1 MB.
+            Investigate /ws/live cleanup logic.
