@@ -33,7 +33,7 @@ const Privacy = () => (
             Effective: March 25, 2026
           </span>
           <span className="px-3 py-1 rounded-full bg-surface-container-high border border-outline-variant/10 font-label uppercase tracking-widest">
-            Last Updated: March 25, 2026
+            Last Updated: April 6, 2026
           </span>
         </div>
       </div>
@@ -193,6 +193,21 @@ const Privacy = () => (
             <li><strong>Contract:</strong> Processing necessary to provide the service you requested</li>
             <li><strong>Legitimate interest:</strong> Security monitoring and fraud prevention</li>
             <li><strong>Legal obligation:</strong> Compliance with applicable laws</li>
+          </ul>
+        </Section>
+
+        <Section icon="public" title="India Digital Personal Data Protection Act (DPDP Act, 2023)">
+          <p>For users in India, Satya Drishti complies with the Digital Personal Data Protection Act, 2023:</p>
+          <ul className="list-disc pl-6 space-y-3 text-base">
+            <li><strong>Lawful Purpose:</strong> We process personal data only for the purpose of providing deepfake and coercion detection services that you have explicitly consented to by using the platform</li>
+            <li><strong>Data Minimization:</strong> We collect only the minimum data necessary to operate the service. Uploaded media is processed in memory and deleted immediately after analysis</li>
+            <li><strong>Notice:</strong> This privacy policy serves as the required notice under Section 5 of the DPDP Act, clearly describing what data we collect, why, and how we process it</li>
+            <li><strong>Consent:</strong> By creating an account and uploading media, you provide informed consent. You may withdraw consent at any time by deleting your account</li>
+            <li><strong>Data Principal Rights:</strong> You have the right to access, correct, and erase your personal data. Use your account settings or contact us to exercise these rights</li>
+            <li><strong>Grievance Redressal:</strong> Contact our Data Protection Officer at <a href="mailto:eksatyadrishti@gmail.com" className="text-primary hover:underline">eksatyadrishti@gmail.com</a> for any privacy concerns. We will respond within 30 days</li>
+            <li><strong>Data Localization:</strong> Primary data processing occurs on servers accessible to Indian users. No personal data is transferred to jurisdictions without adequate data protection</li>
+            <li><strong>Children:</strong> We do not process personal data of individuals below 18 years without verifiable parental consent, in compliance with Section 9 of the DPDP Act</li>
+            <li><strong>Data Breach:</strong> In the event of a data breach, we will notify the Data Protection Board of India and affected users as required under Section 8(6)</li>
           </ul>
         </Section>
 

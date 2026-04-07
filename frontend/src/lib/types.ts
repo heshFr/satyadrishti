@@ -3,6 +3,14 @@ export interface User {
   email: string;
   name: string;
   language_pref: string;
+  email_verified: boolean;
+  totp_enabled: boolean;
+  oauth_provider: string | null;
+  notify_email_threats: boolean;
+  notify_email_reports: boolean;
+  notify_push_enabled: boolean;
+  emergency_contact_name: string | null;
+  emergency_contact_phone: string | null;
   created_at: string;
 }
 
@@ -53,6 +61,22 @@ export interface AnalysisResult {
 export interface TokenResponse {
   token: string;
   user: User;
+  requires_2fa?: boolean;
+  temp_token?: string;
+}
+
+export interface ApiKey {
+  id: string;
+  name: string;
+  key_prefix: string;
+  is_active: boolean;
+  last_used: string | null;
+  request_count: number;
+  created_at: string;
+}
+
+export interface CreateApiKeyResponse extends ApiKey {
+  full_key: string;
 }
 
 export interface Case {

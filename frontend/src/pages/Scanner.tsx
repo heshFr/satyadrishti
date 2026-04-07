@@ -4,6 +4,9 @@ import Layout from "@/components/Layout";
 import MaterialIcon from "@/components/MaterialIcon";
 import { api, API_BASE } from "@/lib/api";
 
+// ─── Feedback States ──────────────────────────────────────────────────
+type FeedbackState = "none" | "correct" | "incorrect" | "unsure" | "submitted";
+
 // ─── Types ─────────────────────────────────────────────────────────────
 
 type State = "upload" | "preview" | "analyzing" | "results";
@@ -23,9 +26,32 @@ interface ApiResult {
 
 // ─── Constants ─────────────────────────────────────────────────────────
 
-const PIPELINE_STEPS = [
+const PIPELINE_STEPS_BY_TYPE: Record<string, { icon: string; label: string; key: string }[]> = {
+  image: [
+    { icon: "image_search", label: "Content Classification", key: "classify" },
+    { icon: "compare", label: "ELA & Frequency", key: "ela" },
+    { icon: "psychology", label: "Neural ViT + CLIP", key: "neural" },
+    { icon: "face", label: "Face Forensics", key: "face" },
+    { icon: "gavel", label: "Final Verdict", key: "verdict" },
+  ],
+  audio: [
+    { icon: "graphic_eq", label: "AST Spectrogram", key: "ast" },
+    { icon: "mic", label: "SSL & Whisper", key: "ssl" },
+    { icon: "tune", label: "Prosodic & Breathing", key: "prosodic" },
+    { icon: "record_voice_over", label: "TTS & Voice Clone", key: "tts" },
+    { icon: "hub", label: "Ensemble Fusion", key: "verdict" },
+  ],
+  video: [
+    { icon: "hd", label: "Quality Assessment", key: "quality" },
+    { icon: "slow_motion_video", label: "Temporal R3D", key: "temporal" },
+    { icon: "face", label: "rPPG & Micro-Expr", key: "bio" },
+    { icon: "light_mode", label: "Lighting & AV Sync", key: "physics" },
+    { icon: "gavel", label: "Final Verdict", key: "verdict" },
+  ],
+};
+const PIPELINE_DEFAULT = [
   { icon: "download", label: "Metadata Extraction", key: "metadata" },
-  { icon: "analytics", label: "Neural Artifacts", key: "neural" },
+  { icon: "analytics", label: "Neural Analysis", key: "neural" },
   { icon: "fingerprint", label: "Biometric Sync", key: "biometric" },
   { icon: "gavel", label: "Final Verdict", key: "verdict" },
 ];
@@ -122,6 +148,8 @@ const Scanner = () => {
   const [result, setResult] = useState<ApiResult | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const [scanId, setScanId] = useState("");
+  const [feedbackState, setFeedbackState] = useState<FeedbackState>("none");
+  const [expandedCheck, setExpandedCheck] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Collapsible sections
@@ -138,6 +166,7 @@ const Scanner = () => {
   const vc = verdictCfg(verdict, result?.status_text);
   const anomalies = checks.filter((c: any) => c.status === "fail" || c.status === "warn");
   const passes = checks.filter((c: any) => c.status === "pass");
+  const pipelineSteps = file ? (PIPELINE_STEPS_BY_TYPE[mediaType(file.type)] ?? PIPELINE_DEFAULT) : PIPELINE_DEFAULT;
   const circumference = 2 * Math.PI * 28;
   const dashoffset = circumference * (1 - confidence / 100);
 
@@ -172,10 +201,15 @@ const Scanner = () => {
     setScanId(`SD-${Math.floor(Math.random() * 9000 + 1000)}-XFB`);
     const t0 = performance.now();
 
-    for (let i = 0; i < PIPELINE_STEPS.length; i++) {
-      setCurrentStep(i);
-      if (i < PIPELINE_STEPS.length - 1) await new Promise((r) => setTimeout(r, 800));
-    }
+    // Animate through pipeline steps while API call runs
+    const stepInterval = setInterval(() => {
+      setCurrentStep((prev) => {
+        if (prev < pipelineSteps.length - 2) return prev + 1;
+        clearInterval(stepInterval);
+        return prev;
+      });
+    }, 1200);
+    setCurrentStep(0);
 
     try {
       let data: ApiResult;
@@ -197,11 +231,13 @@ const Scanner = () => {
       } else {
         data = await api.analyze.media(file) as any;
       }
+      clearInterval(stepInterval);
       setResult(data);
       setElapsed((performance.now() - t0) / 1000);
-      setCurrentStep(PIPELINE_STEPS.length);
+      setCurrentStep(pipelineSteps.length);
       setState("results");
     } catch (err) {
+      clearInterval(stepInterval);
       toast.error(err instanceof Error ? err.message : "Analysis failed");
       setState("preview"); setCurrentStep(-1);
     }
@@ -211,7 +247,37 @@ const Scanner = () => {
     if (preview) URL.revokeObjectURL(preview);
     setFile(null); setPreview(null); setDims(null);
     setState("upload"); setCurrentStep(-1);
-    setResult(null); setElapsed(0);
+    setResult(null); setElapsed(0); setFeedbackState("none");
+    setExpandedCheck(null);
+  };
+
+  const handleFeedback = async (feedback: "correct" | "incorrect" | "unsure") => {
+    const sid = result?.scan_id;
+    if (!sid) { toast.error("No scan ID available for feedback"); return; }
+    try {
+      setFeedbackState(feedback);
+      await api.monitoring.feedback(sid, feedback);
+      setFeedbackState("submitted");
+      toast.success(feedback === "correct" ? "Thanks! This helps improve accuracy." : feedback === "incorrect" ? "Got it — we'll use this to improve." : "Noted — we'll review this case.");
+    } catch { setFeedbackState("none"); toast.error("Failed to submit feedback"); }
+  };
+
+  const handlePdfReport = async () => {
+    const sid = result?.scan_id;
+    if (!sid) { handleDownloadReport(); return; }
+    try {
+      const token = localStorage.getItem("satya-token");
+      const resp = await fetch(`${API_BASE}/api/scans/${sid}/report`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!resp.ok) { handleDownloadReport(); return; }
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = `satyadrishti_report_${sid.slice(0, 8)}.pdf`; a.click();
+      URL.revokeObjectURL(url);
+      toast.success("PDF report downloaded");
+    } catch { handleDownloadReport(); }
   };
 
   const handleDownloadReport = () => {
@@ -324,7 +390,7 @@ const Scanner = () => {
             {/* Hero */}
             <section className="space-y-8">
               <div className="max-w-5xl">
-                <h1 className="font-headline text-6xl md:text-8xl font-black tracking-tighter text-on-surface mb-6 leading-[0.85]">
+                <h1 className="font-headline text-4xl sm:text-6xl md:text-8xl font-black tracking-tighter text-on-surface mb-6 leading-[0.85]">
                   Detection Lab<span className="text-primary-container">.</span>
                 </h1>
                 <p className="text-on-surface-variant text-xl max-w-2xl font-light leading-relaxed">
@@ -345,7 +411,7 @@ const Scanner = () => {
                       onDragLeave={() => setIsDragging(false)}
                       onDrop={handleDrop}
                       onClick={() => inputRef.current?.click()}
-                      className={`relative w-full aspect-[21/9] bg-surface-container-highest/20 backdrop-blur-2xl rounded-2xl border transition-all duration-700 cursor-pointer flex flex-col items-center justify-center space-y-6 overflow-hidden ${
+                      className={`relative w-full aspect-[4/3] sm:aspect-[16/9] lg:aspect-[21/9] bg-surface-container-highest/20 backdrop-blur-2xl rounded-2xl border transition-all duration-700 cursor-pointer flex flex-col items-center justify-center space-y-6 overflow-hidden ${
                         isDragging ? "border-primary bg-primary/10 shadow-[0_0_50px_rgba(0,209,255,0.3)] scale-[1.01]" : "border-white/5 hover:border-primary/40 hover:bg-surface-container-highest/40"
                       }`}
                     >
@@ -448,12 +514,12 @@ const Scanner = () => {
                     <span className="font-label text-xs uppercase tracking-widest text-primary font-bold">Forensic Pipeline Status</span>
                     <span className="font-label text-xs text-on-surface-variant italic">ID: {scanId}</span>
                   </div>
-                  <div className="relative flex justify-between items-start pt-4">
+                  <div className="relative flex justify-between items-start pt-4 overflow-x-auto pb-2">
                     <div className="absolute top-9 left-0 w-full h-[2px] bg-surface-container-high z-0" />
-                    {PIPELINE_STEPS.map((step, i) => {
+                    {pipelineSteps.map((step, i) => {
                       const done = currentStep > i; const active = currentStep === i;
                       return (
-                        <div key={step.key} className={`relative z-10 flex flex-col items-center w-1/4 text-center transition-all duration-500 ${currentStep < i ? "opacity-30 grayscale" : "opacity-100"}`}>
+                        <div key={step.key} className={`relative z-10 flex flex-col items-center w-1/5 text-center transition-all duration-500 ${currentStep < i ? "opacity-30 grayscale" : "opacity-100"}`}>
                           <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-4 transition-all duration-500 ${
                             done ? "bg-secondary shadow-glow-emerald rotate-[360deg]" : active ? "bg-primary-container ring-8 ring-primary/10 scale-110" : "bg-surface-container-high"
                           }`}>
@@ -507,7 +573,7 @@ const Scanner = () => {
                      verdict === "authentic" ? "VERIFIED SAFE" : "REVIEW NEEDED"}
                   </span>
                 </div>
-                <h1 className="text-4xl md:text-6xl font-headline font-black text-on-surface tracking-tighter mb-6 break-words leading-[0.9]">
+                <h1 className="text-2xl sm:text-4xl md:text-6xl font-headline font-black text-on-surface tracking-tighter mb-6 break-words leading-[0.9]">
                   Verification Analysis: <span className="text-primary-container break-all font-mono opacity-80">{file?.name ?? "Unknown"}</span>
                 </h1>
                 <p className="text-on-surface-variant text-base font-light leading-relaxed max-w-3xl">
@@ -550,7 +616,7 @@ const Scanner = () => {
                   </div>
                   <div>
                     <p className="text-[10px] text-outline uppercase tracking-widest mb-1">Authenticity Verdict</p>
-                    <h2 className={`text-4xl md:text-5xl font-headline font-extrabold tracking-tight ${vc.color}`}>{vc.label}</h2>
+                    <h2 className={`text-2xl sm:text-4xl md:text-5xl font-headline font-extrabold tracking-tight ${vc.color}`}>{vc.label}</h2>
                     <div className="flex items-center gap-3 mt-3">
                       <div className="flex gap-1">
                         {[1, 2, 3, 4, 5].map((n) => (
@@ -563,14 +629,14 @@ const Scanner = () => {
                 </div>
 
                 {/* Right: Quick stats */}
-                <div className="flex gap-6">
-                  <div className="bg-surface-container-lowest/60 backdrop-blur-sm px-6 py-4 rounded-xl border border-outline-variant/10 text-center min-w-[120px]">
+                <div className="flex flex-wrap gap-3 md:gap-6">
+                  <div className="bg-surface-container-lowest/60 backdrop-blur-sm px-4 md:px-6 py-3 md:py-4 rounded-xl border border-outline-variant/10 text-center min-w-[100px] flex-1 md:flex-none">
                     <p className="text-[10px] text-outline uppercase tracking-widest mb-1">Neural Noise</p>
                     <p className={`text-xl font-headline font-bold ${verdict === "ai-generated" ? "text-error" : "text-on-surface"}`}>
                       {verdict === "ai-generated" ? "Elevated" : "Negligible"}
                     </p>
                   </div>
-                  <div className="bg-surface-container-lowest/60 backdrop-blur-sm px-6 py-4 rounded-xl border border-outline-variant/10 text-center min-w-[120px]">
+                  <div className="bg-surface-container-lowest/60 backdrop-blur-sm px-4 md:px-6 py-3 md:py-4 rounded-xl border border-outline-variant/10 text-center min-w-[100px] flex-1 md:flex-none">
                     <p className="text-[10px] text-outline uppercase tracking-widest mb-1">Artifacts</p>
                     <p className={`text-xl font-headline font-bold ${anomalies.filter(a => a.status === "fail").length > 0 ? "text-error" : "text-on-surface"}`}>
                       {anomalies.filter(a => a.status === "fail").length > 0
@@ -578,11 +644,62 @@ const Scanner = () => {
                         : "0 Detected"}
                     </p>
                   </div>
-                  <div className="bg-surface-container-lowest/60 backdrop-blur-sm px-6 py-4 rounded-xl border border-outline-variant/10 text-center min-w-[120px]">
+                  <div className="bg-surface-container-lowest/60 backdrop-blur-sm px-4 md:px-6 py-3 md:py-4 rounded-xl border border-outline-variant/10 text-center min-w-[100px] flex-1 md:flex-none">
                     <p className="text-[10px] text-outline uppercase tracking-widest mb-1">Layers</p>
                     <p className="text-xl font-headline font-bold text-on-surface">{checks.length}</p>
                   </div>
                 </div>
+              </div>
+            </section>
+
+            {/* ────────────────────────────────────────────────────────
+                 SECTION 2.5 — Accuracy Feedback
+               ──────────────────────────────────────────────────────── */}
+            <section className="rounded-2xl p-6 bg-surface-container-low/70 backdrop-blur-xl border border-outline-variant/10">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <MaterialIcon icon="rate_review" size={24} className="text-primary" />
+                  <div>
+                    <p className="text-sm font-headline font-bold text-on-surface">Was this analysis accurate?</p>
+                    <p className="text-xs text-on-surface-variant mt-0.5">Your feedback directly improves our detection accuracy</p>
+                  </div>
+                </div>
+                {feedbackState === "submitted" ? (
+                  <div className="flex items-center gap-2 px-4 py-2 bg-secondary/10 rounded-full border border-secondary/20">
+                    <MaterialIcon icon="check_circle" size={16} className="text-secondary" />
+                    <span className="text-xs font-bold text-secondary uppercase tracking-widest">Feedback Recorded</span>
+                  </div>
+                ) : (
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => handleFeedback("correct")}
+                      disabled={feedbackState !== "none"}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-xs font-bold uppercase tracking-widest transition-all cursor-pointer ${
+                        feedbackState === "correct" ? "bg-secondary/20 border-secondary/40 text-secondary" : "bg-surface-container-high border-outline-variant/20 text-on-surface-variant hover:border-secondary/40 hover:text-secondary"
+                      }`}
+                    >
+                      <MaterialIcon icon="thumb_up" size={16} /> Correct
+                    </button>
+                    <button
+                      onClick={() => handleFeedback("incorrect")}
+                      disabled={feedbackState !== "none"}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-xs font-bold uppercase tracking-widest transition-all cursor-pointer ${
+                        feedbackState === "incorrect" ? "bg-error/20 border-error/40 text-error" : "bg-surface-container-high border-outline-variant/20 text-on-surface-variant hover:border-error/40 hover:text-error"
+                      }`}
+                    >
+                      <MaterialIcon icon="thumb_down" size={16} /> Incorrect
+                    </button>
+                    <button
+                      onClick={() => handleFeedback("unsure")}
+                      disabled={feedbackState !== "none"}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-xs font-bold uppercase tracking-widest transition-all cursor-pointer ${
+                        feedbackState === "unsure" ? "bg-primary/20 border-primary/40 text-primary" : "bg-surface-container-high border-outline-variant/20 text-on-surface-variant hover:border-primary/40 hover:text-primary"
+                      }`}
+                    >
+                      <MaterialIcon icon="help" size={16} /> Unsure
+                    </button>
+                  </div>
+                )}
               </div>
             </section>
 
@@ -689,8 +806,8 @@ const Scanner = () => {
               </div>
               <div className="relative flex justify-between items-start">
                 <div className="absolute top-5 left-0 w-full h-[1px] bg-surface-container-high z-0" />
-                {PIPELINE_STEPS.map((step) => (
-                  <div key={step.key} className="relative z-10 flex flex-col items-center w-1/4 text-center">
+                {pipelineSteps.map((step) => (
+                  <div key={step.key} className="relative z-10 flex flex-col items-center w-1/5 text-center">
                     <div className="w-10 h-10 rounded-full bg-secondary-container shadow-glow-emerald flex items-center justify-center mb-4">
                       <MaterialIcon icon="check" filled size={16} className="text-on-secondary" />
                     </div>
@@ -723,10 +840,18 @@ const Scanner = () => {
                       c.status === "fail" ? "bg-error/5 border-error/20 text-error" :
                       c.status === "warn" ? "bg-primary/5 border-primary/20 text-primary" :
                       "bg-surface-container-high/50 border-outline-variant/20 text-outline";
+                    const isExpanded = expandedCheck === id;
+                    const rawDetail = c.raw_data || (raw[id] ? raw[id] : null);
                     return (
-                      <div key={id} className="p-6 rounded-2xl bg-surface-container-low border border-outline-variant/10 hover:border-outline-variant/30 hover:shadow-card transition-all duration-300 group/card">
+                      <div key={id} onClick={() => setExpandedCheck(isExpanded ? null : id)}
+                        className={`p-6 rounded-2xl bg-surface-container-low border transition-all duration-300 cursor-pointer group/card ${
+                          isExpanded ? "border-primary/40 shadow-glow-sm col-span-1 md:col-span-2 xl:col-span-3" : "border-outline-variant/10 hover:border-outline-variant/30 hover:shadow-card"
+                        }`}>
                         <div className="flex items-center justify-between mb-4">
-                          <MaterialIcon icon={icon} size={28} className={`${statusColor} group-hover/card:scale-110 transition-transform`} />
+                          <div className="flex items-center gap-3">
+                            <MaterialIcon icon={icon} size={28} className={`${statusColor} group-hover/card:scale-110 transition-transform`} />
+                            <MaterialIcon icon={isExpanded ? "expand_less" : "expand_more"} size={18} className="text-outline/50" />
+                          </div>
                           <span className={`text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full border ${statusBg}`}>
                             {c.status === "pass" ? "CLEAN" : c.status === "fail" ? "ALERT" : c.status === "warn" ? "WARNING" : "INFO"}
                           </span>
@@ -742,6 +867,33 @@ const Scanner = () => {
                             <div className="h-1.5 bg-surface-container-high rounded-full overflow-hidden">
                               <div className={`h-full rounded-full ${score > 70 ? "bg-secondary" : score > 40 ? "bg-primary" : "bg-error"}`} style={{ width: `${score}%` }} />
                             </div>
+                          </div>
+                        )}
+                        {/* Expanded detail panel */}
+                        {isExpanded && (
+                          <div className="mt-6 pt-6 border-t border-outline-variant/10 space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                            {c.recommendations && (
+                              <div className="p-4 rounded-xl bg-primary/5 border border-primary/10">
+                                <p className="text-xs font-bold text-primary uppercase tracking-widest mb-2">Recommendation</p>
+                                <p className="text-sm text-on-surface-variant">{c.recommendations}</p>
+                              </div>
+                            )}
+                            {rawDetail && typeof rawDetail === "object" && (
+                              <div className="rounded-xl bg-surface-container-lowest/80 border border-outline-variant/5 overflow-hidden">
+                                <p className="text-[10px] font-bold text-outline uppercase tracking-widest px-4 py-3 bg-surface-container-high/50">Raw Engine Output</p>
+                                <div className="p-4 grid grid-cols-2 md:grid-cols-3 gap-3">
+                                  {Object.entries(rawDetail).filter(([, v]) => v !== null && v !== undefined && typeof v !== "object").map(([k, v]) => (
+                                    <div key={k} className="flex flex-col gap-0.5">
+                                      <span className="text-[10px] text-outline font-mono uppercase tracking-wider">{k.replace(/_/g, " ")}</span>
+                                      <span className="text-sm font-mono text-on-surface font-bold">{typeof v === "number" ? (v as number).toFixed(4) : String(v)}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            {!rawDetail && !c.recommendations && (
+                              <p className="text-xs text-on-surface-variant italic">No additional details available for this engine.</p>
+                            )}
                           </div>
                         )}
                       </div>
@@ -914,8 +1066,8 @@ const Scanner = () => {
               <button onClick={handleReset} className="flex-1 py-4 bg-gradient-to-r from-primary to-primary-container text-on-primary-container font-headline font-extrabold text-sm tracking-widest uppercase rounded-xl shadow-xl transition-transform hover:scale-[1.02] active:scale-95 cursor-pointer flex items-center justify-center gap-3">
                 <MaterialIcon icon="add_circle" size={20} /> New Analysis
               </button>
-              <button onClick={handleDownloadReport} className="flex-1 py-4 bg-surface-container-high border border-outline-variant/20 hover:border-outline-variant/60 text-on-surface font-headline font-bold text-sm tracking-widest uppercase rounded-xl transition-all cursor-pointer flex items-center justify-center gap-3">
-                <MaterialIcon icon="download" size={20} /> Download Report
+              <button onClick={handlePdfReport} className="flex-1 py-4 bg-surface-container-high border border-outline-variant/20 hover:border-outline-variant/60 text-on-surface font-headline font-bold text-sm tracking-widest uppercase rounded-xl transition-all cursor-pointer flex items-center justify-center gap-3">
+                <MaterialIcon icon="picture_as_pdf" size={20} /> Download Report
               </button>
               <button onClick={handleSaveCase} className="flex-1 py-4 bg-surface-container-high border border-outline-variant/20 hover:border-outline-variant/60 text-on-surface font-headline font-bold text-sm tracking-widest uppercase rounded-xl transition-all cursor-pointer flex items-center justify-center gap-3">
                 <MaterialIcon icon="database" size={20} /> Save Case

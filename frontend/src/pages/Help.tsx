@@ -107,7 +107,7 @@ const Help = () => {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             {/* Shield Management — large card */}
             <Link
-              to="/dashboard"
+              to="/hub"
               className="md:col-span-2 md:row-span-2 bg-surface-container-low rounded-xl p-8 flex flex-col justify-between group cursor-pointer hover:bg-surface-container-high transition-all duration-300 relative overflow-hidden"
             >
               <div className="relative z-10 space-y-4">

@@ -65,7 +65,7 @@ const LandingNav = () => {
 
               {isAuthenticated ? (
                 <Link
-                  to="/dashboard"
+                  to="/hub"
                   className="hidden md:flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-primary to-accent text-white text-sm font-display font-semibold hover:shadow-glow-sm transition-all cursor-pointer"
                 >
                   {t("common.dashboard")}

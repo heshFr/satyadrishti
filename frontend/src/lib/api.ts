@@ -1,4 +1,4 @@
-import type { User, PaginatedScans, Scan, AnalysisResult, TokenResponse, ContactForm, Case, PaginatedCases } from "./types";
+import type { User, PaginatedScans, Scan, AnalysisResult, TokenResponse, ContactForm, Case, PaginatedCases, ApiKey, CreateApiKeyResponse } from "./types";
 
 export const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
 export const WS_BASE = import.meta.env.VITE_WS_BASE ||
@@ -114,6 +114,31 @@ export const api = {
         method: "POST",
         body: JSON.stringify({ email, code, new_password: newPassword }),
       }),
+    // Email verification
+    verifyEmail: (code: string) =>
+      apiFetch<{ success: boolean; message: string }>("/api/auth/verify-email", {
+        method: "POST",
+        body: JSON.stringify({ code }),
+      }),
+    resendVerification: () =>
+      apiFetch<{ success: boolean; message: string; code?: string }>("/api/auth/resend-verification", {
+        method: "POST",
+      }),
+    deleteAccount: (password: string) =>
+      apiFetch<{ success: boolean; message: string }>("/api/auth/account", {
+        method: "DELETE",
+        body: JSON.stringify({ password, confirm: "DELETE" }),
+      }),
+  },
+  apiKeys: {
+    list: () => apiFetch<ApiKey[]>("/api/keys"),
+    create: (name: string) =>
+      apiFetch<CreateApiKeyResponse>("/api/keys", {
+        method: "POST",
+        body: JSON.stringify({ name }),
+      }),
+    revoke: (keyId: string) =>
+      apiFetch<{ status: string }>(`/api/keys/${keyId}`, { method: "DELETE" }),
   },
   scans: {
     list: (page = 1, perPage = 20) => apiFetch<PaginatedScans>(`/api/scans?page=${page}&per_page=${perPage}`),
@@ -160,5 +185,18 @@ export const api = {
         method: "POST",
         body: JSON.stringify(data),
       }),
+  },
+  monitoring: {
+    feedback: (scanId: string, feedback: "correct" | "incorrect" | "unsure", groundTruth?: string) =>
+      apiFetch<{ status: string }>("/api/monitoring/feedback", {
+        method: "POST",
+        body: JSON.stringify({ scan_id: scanId, feedback, ground_truth: groundTruth }),
+      }),
+    accuracy: () => apiFetch<any>("/api/monitoring/accuracy"),
+    stats: () => apiFetch<any>("/api/monitoring/stats"),
+    calibration: () => apiFetch<any>("/api/monitoring/calibration"),
+    drift: () => apiFetch<any>("/api/monitoring/drift"),
+    checks: () => apiFetch<any>("/api/monitoring/checks"),
+    deepHealth: () => apiFetch<any>("/api/monitoring/health/deep"),
   },
 };
