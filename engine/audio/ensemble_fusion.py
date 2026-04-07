@@ -41,26 +41,42 @@ ANALYZER_ORDER = [
     "phase",
     "formant",
     "temporal",
+    "tts_artifacts",
+    # Phase 8: New analyzers
+    "spectral_continuity",
+    "phoneme_transition",
+    "room_acoustics",
 ]
 
-# Default weights (before training) — reflect relative reliability
-# AST is the primary neural detector; other layers provide supporting evidence
+# Default weights — the primary Wav2Vec2 detector (99.7% eval accuracy)
+# gets the highest weight. Signal processing layers provide supporting
+# evidence but should NOT override a confident neural prediction.
+# TTS artifact detector targets ElevenLabs/modern TTS specifically.
+# Phase 8: Three new layers add independent detection signals.
 DEFAULT_WEIGHTS = {
-    "ast": 0.10,
-    "rawnet3": 0.05,
-    "ssl": 0.20,
-    "whisper_features": 0.15,
-    "prosodic": 0.20,
-    "breathing": 0.15,
-    "phase": 0.025,
-    "formant": 0.025,
-    "temporal": 0.10,
+    "ast": 0.26,           # Primary neural detector (Wav2Vec2) — most reliable
+    "rawnet3": 0.03,
+    "ssl": 0.12,           # SSL backbone — good discriminator
+    "whisper_features": 0.08,
+    "prosodic": 0.06,      # Signal processing — supporting evidence only
+    "breathing": 0.04,     # Can false-positive on noisy/short audio
+    "phase": 0.02,
+    "formant": 0.02,
+    "temporal": 0.08,
+    "tts_artifacts": 0.14, # Modern TTS artifact detector — ElevenLabs/etc.
+    # Phase 8: New analyzers (15% total weight across 3 new layers)
+    "spectral_continuity": 0.06,  # Spectral envelope evolution analysis
+    "phoneme_transition": 0.05,   # Coarticulation pattern analysis
+    "room_acoustics": 0.04,       # Room impulse response consistency
 }
 
-# Verdict thresholds — tuned for real-time call protection sensitivity
-SPOOF_THRESHOLD = 0.55
-BONAFIDE_THRESHOLD = 0.25
-UNCERTAINTY_THRESHOLD = 0.6
+# Verdict thresholds — tuned for detection of modern TTS.
+# Lowered spoof threshold from 0.55 because modern TTS can fool some layers,
+# making the overall score lower. When neural detectors say "spoof" at 0.50+
+# and corroborating evidence exists, 0.50 is enough.
+SPOOF_THRESHOLD = 0.50
+BONAFIDE_THRESHOLD = 0.32
+UNCERTAINTY_THRESHOLD = 0.70  # Raised: allow more disagreement before blocking
 
 
 class EnsembleFusion:
@@ -361,13 +377,23 @@ class EnsembleFusion:
     # ------------------------------------------------------------------
 
     def _fuse_weighted(self, valid: dict) -> float:
-        """Weighted average fusion with confidence-adjusted weights."""
+        """
+        Weighted average fusion with confidence-adjusted weights, neural
+        dominance, and corroboration amplification.
+
+        Key principles for modern TTS detection:
+        1. Neural detectors (AST, SSL) are trusted more than heuristic layers
+        2. When neural detectors say "spoof", heuristic "real" signals are dampened
+           (modern TTS fools breathing/prosodic/formant detectors)
+        3. When neural + TTS artifacts agree, corroboration boost is applied
+        4. Heuristic layers saying "spoof" are still trusted (hard to fake physics)
+        """
+        # Step 1: Compute base weighted average
         weighted_sum = 0.0
         total_weight = 0.0
 
         for name, info in valid.items():
             base_weight = self._weights.get(name, 0.05)
-            # Scale weight by analyzer confidence
             effective_weight = base_weight * info["confidence"]
             weighted_sum += info["score"] * effective_weight
             total_weight += effective_weight
@@ -375,7 +401,80 @@ class EnsembleFusion:
         if total_weight < 1e-12:
             return 0.5
 
-        return weighted_sum / total_weight
+        base_probability = weighted_sum / total_weight
+
+        # Step 2: Neural dominance — when AST (primary neural) confidently says
+        # "spoof" but heuristic layers say "real", pull toward neural.
+        # This handles modern TTS that fools breathing/prosodic/formant.
+        NEURAL_LAYERS = {"ast", "ssl", "whisper_features", "tts_artifacts"}
+        HEURISTIC_LAYERS = {"prosodic", "breathing", "phase", "formant"}
+
+        neural_scores = []
+        neural_weights = []
+        heuristic_real_pull = 0.0
+        heuristic_total_weight = 0.0
+
+        for name, info in valid.items():
+            if name in NEURAL_LAYERS:
+                neural_scores.append(info["score"])
+                neural_weights.append(self._weights.get(name, 0.05))
+            elif name in HEURISTIC_LAYERS:
+                w = self._weights.get(name, 0.05)
+                heuristic_total_weight += w
+                if info["score"] < 0.4:
+                    # This heuristic layer is pulling toward "real"
+                    heuristic_real_pull += (0.5 - info["score"]) * w
+
+        if neural_scores:
+            neural_avg = np.average(neural_scores, weights=neural_weights)
+
+            # When neural average says "spoof" (>0.55) but heuristic layers
+            # are pulling toward "real", dampen the heuristic pull
+            if neural_avg > 0.55 and heuristic_real_pull > 0:
+                # How much the neural detectors are saying "spoof"
+                neural_confidence = min(1.0, (neural_avg - 0.55) * 4)
+                # Dampen heuristic "real" pull by neural confidence
+                dampen_factor = 1.0 - (neural_confidence * 0.7)  # Max 70% dampening
+                # Adjust the base probability toward what it would be without
+                # heuristic "real" pull
+                if heuristic_total_weight > 0:
+                    heuristic_pull_effect = heuristic_real_pull / (total_weight + 1e-10)
+                    restored = base_probability + heuristic_pull_effect * (1 - dampen_factor)
+                    base_probability = restored
+                    logger.info(
+                        "Neural dominance: neural_avg=%.3f, dampened heuristic 'real' pull by %.0f%% "
+                        "(%.4f -> %.4f)",
+                        neural_avg, (1 - dampen_factor) * 100,
+                        base_probability - heuristic_pull_effect * (1 - dampen_factor),
+                        base_probability,
+                    )
+
+        # Step 3: Corroboration amplification
+        # When multiple independent systems agree on "spoof", boost confidence.
+        # This is especially important for modern TTS where individual scores
+        # are moderate (0.5-0.7) rather than extreme (>0.9).
+        n_spoof_layers = sum(1 for info in valid.values() if info["score"] > 0.52)
+        n_total = len(valid)
+
+        if n_total >= 3 and base_probability > 0.45:
+            spoof_ratio = n_spoof_layers / n_total
+            if spoof_ratio >= 0.5:
+                # Majority agreement on spoof — corroboration boost
+                boost_strength = (spoof_ratio - 0.5) * 0.3  # 0 at 50%, 0.15 at 100%
+                # Also consider if neural + tts_artifacts both agree
+                ast_spoof = valid.get("ast", {}).get("score", 0.5) > 0.5
+                tts_spoof = valid.get("tts_artifacts", {}).get("score", 0.5) > 0.5
+                if ast_spoof and tts_spoof:
+                    boost_strength += 0.08  # Neural + physics agree = strong
+                base_probability = base_probability + boost_strength * (1 - base_probability)
+                logger.info(
+                    "Corroboration boost: %d/%d layers say spoof (ratio=%.0f%%), "
+                    "boost=%.4f -> %.4f",
+                    n_spoof_layers, n_total, spoof_ratio * 100,
+                    boost_strength, base_probability,
+                )
+
+        return float(np.clip(base_probability, 0.0, 1.0))
 
     def _fuse_trained(self, valid: dict) -> float:
         """Use trained logistic regression for fusion."""
@@ -482,26 +581,54 @@ class EnsembleFusion:
 
         For call protection, we err on the side of caution:
         - High probability spoof should trigger even with analyzer disagreement
+        - Neural Override: When the neural model is confident, lower the threshold
         - Biological Veto System: Biological failures immediately trigger a spoof
           alert regardless of neural confidence.
+        - TTS Artifact Veto: When TTS artifacts are strong and neural agrees,
+          immediate spoof verdict.
         """
-        # Biological Veto System: If physics/biology detect catastrophic failure, instant spoof.
+        # Biological Veto System: Only triggers when signal processing AND
+        # the primary neural model agree.
         if valid:
-            # 1. Lack of breathing for extended periods
-            if "breathing" in valid and valid["breathing"]["score"] > 0.85:
-                return "spoof", "Mathematically Impossible Breathing Pattern Detected"
-            # 2. Impossible vocal cord stability (Prosody)
-            if "prosodic" in valid and valid["prosodic"]["score"] > 0.85:
-                return "spoof", "Mathematically Impossible Vocal Cord Jitter Detected"
-            # 3. Impossible temporal consistency (Embedding)
-            if "temporal" in valid and valid["temporal"]["score"] > 0.85:
-                return "spoof", "Unnaturally Consistent Temporal Embedding Detected"
+            ast_score = valid.get("ast", {}).get("score", 0.5)
+            neural_agrees = ast_score > 0.5
+
+            if neural_agrees:
+                # Veto requires high threshold (0.90+) AND neural agreement
+                if "breathing" in valid and valid["breathing"]["score"] > 0.90:
+                    return "spoof", "Breathing pattern anomaly confirmed by neural model"
+                if "prosodic" in valid and valid["prosodic"]["score"] > 0.90:
+                    return "spoof", "Vocal cord anomaly confirmed by neural model"
+                if "temporal" in valid and valid["temporal"]["score"] > 0.90:
+                    return "spoof", "Temporal consistency anomaly confirmed by neural model"
+
+                # TTS Artifact Veto: neural + TTS artifacts both detect spoof
+                tts_score = valid.get("tts_artifacts", {}).get("score", 0.0)
+                if tts_score > 0.65 and ast_score > 0.55:
+                    return "spoof", "TTS artifacts detected and confirmed by neural model"
+
+            # Strong neural + SSL agreement override
+            ssl_score = valid.get("ssl", {}).get("score", 0.5)
+            if ast_score > 0.65 and ssl_score > 0.55:
+                return "spoof", "Neural (AST) and SSL backbone agree on synthetic voice"
 
         # Very high probability overrides uncertainty entirely
-        if probability > 0.8:
+        if probability > 0.75:
             return "spoof", None
 
-        if probability > SPOOF_THRESHOLD and uncertainty < UNCERTAINTY_THRESHOLD:
+        # Neural override: when AST is confident (>0.6), use lower threshold
+        effective_threshold = SPOOF_THRESHOLD
+        if valid:
+            ast_score = valid.get("ast", {}).get("score", 0.5)
+            if ast_score > 0.6:
+                # Lower threshold when neural detector is confident
+                effective_threshold = SPOOF_THRESHOLD - 0.05
+                logger.info(
+                    "Neural override: AST=%.3f, lowering spoof threshold to %.3f",
+                    ast_score, effective_threshold,
+                )
+
+        if probability > effective_threshold and uncertainty < UNCERTAINTY_THRESHOLD:
             return "spoof", None
         elif probability < BONAFIDE_THRESHOLD:
             return "bonafide", None

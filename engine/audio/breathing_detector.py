@@ -39,10 +39,10 @@ _BREATH_FREQ_HI = 2000.0          # Hz — upper edge
 _MIN_BREATH_DURATION = 0.08       # seconds — shorter than this isn't a breath
 _MAX_BREATH_DURATION = 1.5        # seconds — longer is a sustained pause, not breath
 _MIN_PAUSE_FOR_BREATH = 0.05      # seconds — minimum silence gap to even check
-_NORMAL_BREATH_RATE_LO = 12.0     # breaths / minute (resting lower bound)
-_NORMAL_BREATH_RATE_HI = 20.0     # breaths / minute (conversational upper bound)
-_SPEECH_GAP_SPOOF_THRESHOLD = 10.0  # seconds of speech with zero breaths → suspicious
-_REGULARITY_SUSPICIOUS_CV = 0.1   # coefficient of variation below this → too regular
+_NORMAL_BREATH_RATE_LO = 8.0      # breaths / minute (widened: some speakers breathe less)
+_NORMAL_BREATH_RATE_HI = 25.0     # breaths / minute (widened: fast talkers breathe more)
+_SPEECH_GAP_SPOOF_THRESHOLD = 15.0  # seconds of speech with zero breaths → suspicious (was 10, too aggressive)
+_REGULARITY_SUSPICIOUS_CV = 0.05  # coefficient of variation below this → too regular (was 0.1)
 
 
 class BreathingDetector:
@@ -109,7 +109,16 @@ class BreathingDetector:
             breath_segments, speech_mask, waveform, sr, duration,
         )
 
-        # --- Step 5: Score anomalies --------------------------------------
+        # --- Step 5: Breath template analysis (modern TTS detection) --------
+        # ElevenLabs and similar TTS systems reuse breath waveform templates,
+        # producing nearly identical breath shapes. Real breaths vary in
+        # spectral profile, intensity, and duration.
+        template_features = self._detect_breath_templates(
+            waveform, sr, breath_segments,
+        )
+        features.update(template_features)
+
+        # --- Step 6: Score anomalies --------------------------------------
         anomalies, score = self._score(features, speech_mask, sr, duration)
 
         # Confidence depends on how much speech we have to judge
@@ -485,6 +494,26 @@ class BreathingDetector:
             anomalies.append("abrupt_phonation_onset")
             penalties.append(float((onset_sharpness - 0.85) / 0.15 * 0.3))
 
+        # ---- Anomaly 6: Templated breaths (ElevenLabs signature) ---------
+        if features.get("breath_template_detected", False):
+            anomalies.append("breath_templates_reused")
+            penalties.append(0.75)  # Very strong TTS indicator
+
+        # Spectral similarity alone (even without full template detection)
+        breath_spec_sim = features.get("breath_spectral_similarity", 0.0)
+        if breath_spec_sim > 0.90 and "breath_templates_reused" not in anomalies:
+            anomalies.append("identical_breath_spectra")
+            penalties.append(0.55)
+        elif breath_spec_sim > 0.80 and "breath_templates_reused" not in anomalies:
+            anomalies.append("similar_breath_spectra")
+            penalties.append(0.3)
+
+        # Duration uniformity alone
+        breath_dur_cv = features.get("breath_duration_cv", 1.0)
+        if breath_count >= 3 and breath_dur_cv < 0.08:
+            anomalies.append("identical_breath_durations")
+            penalties.append(0.4)
+
         # ---- Combine penalties (soft-OR: 1 - product of (1-p)) -----------
         if penalties:
             score = 1.0 - float(np.prod([1.0 - p for p in penalties]))
@@ -494,16 +523,130 @@ class BreathingDetector:
             score = 0.05
 
         # ---- Bonus: strong bonafide signals lower the score --------------
+        # BUT only if no template reuse detected (TTS can fake breathing rate)
+        breath_template_detected = features.get("breath_template_detected", False)
         if (
             breath_count >= 2
             and _NORMAL_BREATH_RATE_LO <= breath_rate <= _NORMAL_BREATH_RATE_HI
             and ibi_cv > 0.2
             and has_inhalation
+            and not breath_template_detected
         ):
-            # Everything looks human — push score toward 0
+            # Everything looks human and not templated — push score toward 0
             score *= 0.3
 
         return anomalies, score
+
+    # ------------------------------------------------------------------
+    # Internal: Breath template detection (modern TTS)
+    # ------------------------------------------------------------------
+
+    def _detect_breath_templates(
+        self,
+        waveform: np.ndarray,
+        sr: int,
+        breath_segments: list,
+    ) -> dict:
+        """
+        Detect if breaths are reused waveform templates (ElevenLabs signature).
+
+        Modern TTS systems add breaths from a small pool of recorded breath
+        samples. These templated breaths produce:
+        1. Very high waveform cross-correlation between breath segments
+        2. Nearly identical spectral fingerprints
+        3. Similar durations (low CV)
+
+        Real breaths have different spectral profiles (nasal vs oral), varying
+        intensity (effort level changes), and different durations.
+
+        Returns dict of template-related features.
+        """
+        result = {
+            "breath_template_corr": 0.0,
+            "breath_spectral_similarity": 0.0,
+            "breath_duration_cv": 1.0,
+            "breath_template_detected": False,
+        }
+
+        if len(breath_segments) < 2:
+            return result
+
+        # Extract breath waveform segments
+        breath_waves = []
+        for start_sec, end_sec in breath_segments[:15]:  # Cap at 15
+            start_sample = int(start_sec * sr)
+            end_sample = int(end_sec * sr)
+            segment = waveform[start_sample:end_sample]
+            if len(segment) > int(0.03 * sr):  # At least 30ms
+                breath_waves.append(segment)
+
+        if len(breath_waves) < 2:
+            return result
+
+        # Duration CV
+        durations = [len(bw) / sr for bw in breath_waves]
+        dur_mean = np.mean(durations)
+        dur_std = np.std(durations)
+        dur_cv = dur_std / (dur_mean + 1e-10)
+        result["breath_duration_cv"] = round(float(dur_cv), 4)
+
+        # Spectral fingerprint comparison
+        spectra = []
+        for bw in breath_waves:
+            n_fft = min(512, len(bw))
+            spec = np.abs(np.fft.rfft(bw[:n_fft] * np.hanning(n_fft)))
+            if spec.sum() > 0:
+                spec = spec / (spec.sum() + 1e-10)  # Normalize
+            spectra.append(spec)
+
+        # Pad spectra to same length
+        if spectra:
+            max_len = max(len(s) for s in spectra)
+            spectra = [np.pad(s, (0, max_len - len(s))) for s in spectra]
+
+        # Cross-correlation of spectral fingerprints
+        spectral_corrs = []
+        for i in range(len(spectra)):
+            for j in range(i + 1, min(i + 6, len(spectra))):
+                corr = np.corrcoef(spectra[i], spectra[j])[0, 1]
+                if not np.isnan(corr):
+                    spectral_corrs.append(corr)
+
+        if spectral_corrs:
+            mean_spectral_corr = np.mean(spectral_corrs)
+            result["breath_spectral_similarity"] = round(float(mean_spectral_corr), 4)
+        else:
+            mean_spectral_corr = 0.0
+
+        # Waveform cross-correlation (resample to same length for comparison)
+        wave_corrs = []
+        target_len = int(np.median([len(bw) for bw in breath_waves]))
+        resampled = []
+        for bw in breath_waves:
+            if len(bw) > 10 and target_len > 10:
+                indices = np.linspace(0, len(bw) - 1, target_len).astype(int)
+                resampled.append(bw[indices])
+
+        for i in range(len(resampled)):
+            for j in range(i + 1, min(i + 6, len(resampled))):
+                corr = np.corrcoef(resampled[i], resampled[j])[0, 1]
+                if not np.isnan(corr):
+                    wave_corrs.append(corr)
+
+        if wave_corrs:
+            mean_wave_corr = np.mean(wave_corrs)
+            result["breath_template_corr"] = round(float(mean_wave_corr), 4)
+        else:
+            mean_wave_corr = 0.0
+
+        # Template detection: high spectral AND waveform correlation
+        # + low duration variation = templated breaths
+        if (mean_spectral_corr > 0.85 and dur_cv < 0.15) or \
+           (mean_wave_corr > 0.80 and mean_spectral_corr > 0.80) or \
+           (mean_spectral_corr > 0.92):
+            result["breath_template_detected"] = True
+
+        return result
 
     # ------------------------------------------------------------------
     # Internal: Confidence estimation

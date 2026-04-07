@@ -60,6 +60,71 @@ try:
 except ImportError:
     HAS_CLIP = False
 
+# Optional: Content classifier (requires CLIP or falls back to heuristic)
+try:
+    from .content_classifier import ContentClassifier, ARTISTIC_CATEGORIES, CATEGORY_DISPLAY_NAMES
+    HAS_CONTENT_CLASSIFIER = True
+except ImportError:
+    HAS_CONTENT_CLASSIFIER = False
+
+# Optional: GAN/Diffusion fingerprint identifier
+try:
+    from .gan_fingerprint import GANFingerprintDetector
+    HAS_GAN_FINGERPRINT = True
+except ImportError:
+    HAS_GAN_FINGERPRINT = False
+
+# Optional: Inpainting & splice detection
+try:
+    from .inpainting_detector import InpaintingDetector
+    HAS_INPAINTING = True
+except ImportError:
+    HAS_INPAINTING = False
+
+# Phase 8: New forensic analyzers
+try:
+    from .spectral_analyzer import SpectralDecayAnalyzer
+    HAS_SPECTRAL = True
+except ImportError:
+    HAS_SPECTRAL = False
+
+try:
+    from .color_forensics import ColorForensicsAnalyzer
+    HAS_COLOR_FORENSICS = True
+except ImportError:
+    HAS_COLOR_FORENSICS = False
+
+try:
+    from .texture_forensics import TextureForensicsAnalyzer
+    HAS_TEXTURE_FORENSICS = True
+except ImportError:
+    HAS_TEXTURE_FORENSICS = False
+
+try:
+    from .reconstruction_detector import ReconstructionDetector
+    HAS_RECONSTRUCTION = True
+except ImportError:
+    HAS_RECONSTRUCTION = False
+
+try:
+    from .upsampling_detector import UpsamplingDetector
+    HAS_UPSAMPLING = True
+except ImportError:
+    HAS_UPSAMPLING = False
+
+# Infrastructure modules
+try:
+    from engine.common.uncertainty import UncertaintyQuantifier
+    HAS_UNCERTAINTY = True
+except ImportError:
+    HAS_UNCERTAINTY = False
+
+try:
+    from engine.common.generator_attribution import GeneratorAttributor
+    HAS_ATTRIBUTION = True
+except ImportError:
+    HAS_ATTRIBUTION = False
+
 # Default model path
 DEFAULT_MODEL_PATH = os.path.join("models", "image_forensics", "deepfake_vit_b16.pt")
 DEFAULT_PRETRAINED_DIR = os.path.join("models", "image_forensics", "pretrained_vit")
@@ -86,20 +151,9 @@ class ImageForensicsDetector:
         self.neural_detector = None
         self.clip_detector = None
 
-        effective_path = model_path or DEFAULT_MODEL_PATH
-        effective_dir = pretrained_dir or DEFAULT_PRETRAINED_DIR
-
         if HAS_VIT and HAS_TORCH:
             try:
-                self.neural_detector = ViTDetector(
-                    pretrained_dir=effective_dir,
-                    weights_path=effective_path,
-                    device=device,
-                )
-                if os.path.exists(effective_path):
-                    print(f"[Forensics] ViT-B/16 loaded with fine-tuned weights from {effective_path}")
-                else:
-                    print("[Forensics] ViT-B/16 loaded with ImageNet-21k backbone (no fine-tuned weights).")
+                self.neural_detector = ViTDetector(device=device)
             except Exception as e:
                 print(f"[Forensics] Could not initialize ViT: {e}")
                 print("[Forensics] Running in statistical-only mode.")
@@ -108,16 +162,49 @@ class ImageForensicsDetector:
 
         if HAS_CLIP:
             try:
+                clip_probe_path = os.path.join(
+                    "models", "image_forensics", "clip_probe.pt"
+                )
                 self.clip_detector = CLIPDetector(
-                    probe_weights_path=os.path.join(
-                        os.path.dirname(effective_path),
-                        "clip_probe.pt"
-                    ) if effective_path else None,
+                    probe_weights_path=clip_probe_path if os.path.exists(clip_probe_path) else None,
                     device=device,
                 )
             except Exception as e:
                 print(f"[Forensics] CLIP detector not available: {e}")
                 print("[Forensics] Zero-shot CLIP will be attempted on first use.")
+
+        # Content classifier: uses CLIP if available, falls back to heuristic
+        self.content_classifier = None
+        if HAS_CONTENT_CLASSIFIER:
+            try:
+                self.content_classifier = ContentClassifier(clip_detector=self.clip_detector)
+            except Exception as e:
+                print(f"[Forensics] Content classifier not available: {e}")
+
+        # GAN/Diffusion fingerprint identifier
+        self.gan_fingerprint = None
+        if HAS_GAN_FINGERPRINT:
+            try:
+                self.gan_fingerprint = GANFingerprintDetector()
+            except Exception as e:
+                print(f"[Forensics] GAN fingerprint detector not available: {e}")
+
+        # Inpainting & splice detector
+        self.inpainting_detector = None
+        if HAS_INPAINTING:
+            try:
+                self.inpainting_detector = InpaintingDetector()
+            except Exception as e:
+                print(f"[Forensics] Inpainting detector not available: {e}")
+
+        # Phase 8: New forensic analyzers
+        self.spectral_analyzer = SpectralDecayAnalyzer() if HAS_SPECTRAL else None
+        self.color_forensics = ColorForensicsAnalyzer() if HAS_COLOR_FORENSICS else None
+        self.texture_forensics = TextureForensicsAnalyzer() if HAS_TEXTURE_FORENSICS else None
+        self.reconstruction_detector = ReconstructionDetector() if HAS_RECONSTRUCTION else None
+        self.upsampling_detector = UpsamplingDetector() if HAS_UPSAMPLING else None
+        self.uncertainty_quantifier = UncertaintyQuantifier() if HAS_UNCERTAINTY else None
+        self.generator_attributor = GeneratorAttributor() if HAS_ATTRIBUTION else None
 
     @property
     def has_neural_model(self) -> bool:
@@ -206,7 +293,48 @@ class ImageForensicsDetector:
 
         print(f"[Forensics] Analyzing: {os.path.basename(image_path)}")
 
-        # ── Step 0: Compression Analysis (new in V2) ──
+        # ── Step 0: Content Type Classification ──
+        # Detect artistic content (cartoons, anime, CGI, illustrations) BEFORE
+        # running the deepfake pipeline. These content types trigger false positives
+        # on checks designed for photographs.
+        content_info = None
+        if self.content_classifier:
+            try:
+                content_info = self.content_classifier.classify(image)
+                ctype = content_info["content_type"]
+                conf = content_info["confidence"]
+                print(f"[Forensics] Content type: {content_info['content_type_display']} "
+                      f"(confidence: {conf:.2%}, method: {content_info['method']})")
+
+                if content_info["is_artistic"]:
+                    # Artistic content — skip photo-specific deepfake checks entirely
+                    return {
+                        "verdict": "artistic-content",
+                        "confidence": round(conf * 100, 1),
+                        "content_type": ctype,
+                        "content_type_display": content_info["content_type_display"],
+                        "forensic_checks": [
+                            {
+                                "id": "content_type",
+                                "name": "Content Type Detection",
+                                "status": "info",
+                                "description": (
+                                    f"Detected as {content_info['content_type_display']} "
+                                    f"({conf:.0%} confidence). Deepfake analysis is designed "
+                                    f"for photographic content and does not apply to artistic media."
+                                ),
+                            }
+                        ],
+                        "raw_scores": {
+                            "content_classification": content_info["category_scores"],
+                            "photo_score": content_info["photo_score"],
+                            "artistic_margin": content_info["artistic_margin"],
+                        },
+                    }
+            except Exception as e:
+                print(f"[Forensics] Content classification failed: {e}")
+
+        # ── Step 0b: Compression Analysis (V2) ──
         compression_info = self.compression_detector.analyze(image_path)
         estimated_quality = compression_info.get("estimated_quality")
         platform_hint = compression_info.get("platform_hint")
@@ -231,6 +359,22 @@ class ImageForensicsDetector:
             "forensic_checks": [],
             "raw_scores": {},
         }
+
+        # Include content classification in report (for non-artistic content)
+        if content_info:
+            report["content_type"] = content_info["content_type"]
+            report["content_type_display"] = content_info["content_type_display"]
+            report["raw_scores"]["content_classification"] = content_info["category_scores"]
+            if content_info["is_hybrid"]:
+                report["forensic_checks"].append({
+                    "id": "content_type",
+                    "name": "Content Type Detection",
+                    "status": "info",
+                    "description": (
+                        f"Detected as {content_info['content_type_display']} — "
+                        f"deepfake checks run with adjusted sensitivity."
+                    ),
+                })
 
         # Add compression check to report
         if is_social_media:
@@ -453,17 +597,14 @@ class ImageForensicsDetector:
                 report["raw_scores"]["neural_tta_std"] = neural_std
 
                 # High TTA variance means the model is uncertain
-                # We apply a slight penalty to the effective neural score when variance is high
-                # This prevents a single augmentation from driving a false positive, but keeps it fair
-                # V2 model: scores cluster tightly (0.80-0.99), so even small
-                # TTA variance is meaningful
-                if neural_std > 0.10:
-                    effective_neural = neural_score * 0.90
+                # Penalize the effective score when augmented views disagree
+                if neural_std > 0.15:
+                    effective_neural = neural_score * 0.85
                     report["raw_scores"]["neural_effective"] = effective_neural
                     tta_note = (f" (TTA std={neural_std:.3f} — HIGH variance, "
                                 f"effective score reduced to {effective_neural * 100:.1f}%)")
-                elif neural_std > 0.05:
-                    effective_neural = neural_score * 0.95
+                elif neural_std > 0.08:
+                    effective_neural = neural_score * 0.93
                     report["raw_scores"]["neural_effective"] = effective_neural
                     tta_note = (f" (TTA std={neural_std:.3f} — moderate variance, "
                                 f"effective score={effective_neural * 100:.1f}%)")
@@ -475,13 +616,12 @@ class ImageForensicsDetector:
                 if preprocessing_info.get("preprocessing_applied"):
                     report["raw_scores"]["preprocessing"] = preprocessing_info
 
-                # V2 calibration: 0.95+ is suspicious, 0.97+ is fail
-                status = "fail" if effective_neural > 0.97 else "warn" if effective_neural > 0.95 else "pass"
+                status = "fail" if effective_neural > 0.65 else "warn" if effective_neural > 0.45 else "pass"
                 desc = (
-                    f"ViT-B/16 detected deepfake patterns ({effective_neural * 100:.1f}% effective){tta_note}"
-                    if effective_neural > 0.75
-                    else f"Uncertain neural patterns detected ({effective_neural * 100:.1f}% effective){tta_note}"
-                    if effective_neural > 0.4
+                    f"Neural deepfake detection: {effective_neural * 100:.1f}% AI probability{tta_note}"
+                    if effective_neural > 0.55
+                    else f"Neural analysis: uncertain ({effective_neural * 100:.1f}%){tta_note}"
+                    if effective_neural > 0.35
                     else f"Neural analysis: likely authentic ({(1 - effective_neural) * 100:.1f}%){tta_note}"
                 )
                 report["forensic_checks"].append({
@@ -512,6 +652,240 @@ class ImageForensicsDetector:
                 })
             except Exception as e:
                 print(f"[Forensics] CLIP analysis failed: {e}")
+
+        # ── Step 8: GAN/Diffusion Model Fingerprint ──
+        if self.gan_fingerprint:
+            try:
+                gan_result = self.gan_fingerprint.analyze(image)
+                gan_score = gan_result.get("score", 0.5)
+                gen_class = gan_result.get("generator_class", "unknown")
+                gen_name = gan_result.get("generator_name", "unknown")
+                gen_conf = gan_result.get("generator_confidence", 0)
+
+                report["raw_scores"]["gan_fingerprint"] = gan_score
+                report["raw_scores"]["generator_class"] = gen_class
+                report["raw_scores"]["generator_name"] = gen_name
+
+                if gen_class != "real" and gen_class != "unknown" and gen_conf > 0.3:
+                    gan_status = "fail" if gan_score > 0.6 else "warn" if gan_score > 0.4 else "info"
+                    report["forensic_checks"].append({
+                        "id": "gan_fingerprint",
+                        "name": "AI Generator Fingerprint",
+                        "status": gan_status,
+                        "description": (
+                            f"Generator class: {gen_class} "
+                            f"(likely {gen_name}, {gen_conf*100:.0f}% match). "
+                            f"Spectral fingerprint score: {gan_score*100:.1f}%."
+                        ),
+                    })
+                else:
+                    report["forensic_checks"].append({
+                        "id": "gan_fingerprint",
+                        "name": "AI Generator Fingerprint",
+                        "status": "pass",
+                        "description": (
+                            f"No AI generator fingerprint detected. "
+                            f"Spectral profile consistent with camera capture."
+                        ),
+                    })
+            except Exception as e:
+                print(f"[Forensics] GAN fingerprint analysis failed: {e}")
+
+        # ── Step 9: Inpainting & Splice Detection ──
+        if self.inpainting_detector:
+            try:
+                splice_result = self.inpainting_detector.analyze(image)
+                splice_score = splice_result.get("score", 0)
+                is_manipulated = splice_result.get("is_manipulated", False)
+                manip_type = splice_result.get("manipulation_type", "none")
+                manip_conf = splice_result.get("manipulation_confidence", 0)
+                regions = splice_result.get("manipulation_regions", [])
+
+                report["raw_scores"]["inpainting_score"] = splice_score
+                report["raw_scores"]["manipulation_type"] = manip_type
+
+                if is_manipulated and manip_conf > 0.3:
+                    splice_status = "fail" if splice_score > 0.6 else "warn"
+                    region_text = f" {len(regions)} region(s) identified." if regions else ""
+                    report["forensic_checks"].append({
+                        "id": "inpainting_detection",
+                        "name": "Inpainting & Splice Detection",
+                        "status": splice_status,
+                        "description": (
+                            f"Manipulation detected: {manip_type} ({manip_conf*100:.0f}% confidence). "
+                            f"Noise: {splice_result.get('noise_map_anomaly', 0)*100:.0f}%, "
+                            f"JPEG grid: {splice_result.get('jpeg_grid_anomaly', 0)*100:.0f}%, "
+                            f"Edge: {splice_result.get('edge_anomaly', 0)*100:.0f}%.{region_text}"
+                        ),
+                    })
+                else:
+                    report["forensic_checks"].append({
+                        "id": "inpainting_detection",
+                        "name": "Inpainting & Splice Detection",
+                        "status": "pass",
+                        "description": (
+                            f"No regional manipulation detected. "
+                            f"Noise and compression patterns are consistent across image."
+                        ),
+                    })
+            except Exception as e:
+                print(f"[Forensics] Inpainting detection failed: {e}")
+
+        # ── Step 10: Spectral Decay Analysis (Phase 8) ──
+        if self.spectral_analyzer:
+            try:
+                spectral_result = self.spectral_analyzer.analyze(image)
+                spectral_score = spectral_result["score"]
+                if is_compressed or is_social_media:
+                    spectral_score *= max(stat_reliability, 0.6)
+                report["raw_scores"]["spectral_decay"] = spectral_score
+                report["raw_scores"]["spectral_beta"] = spectral_result.get("beta_exponent", 0)
+
+                s_status = "fail" if spectral_score > 0.6 else "warn" if spectral_score > 0.4 else "pass"
+                report["forensic_checks"].append({
+                    "id": "spectral_decay",
+                    "name": "Spectral Decay Analysis",
+                    "status": s_status,
+                    "description": (
+                        f"Power-law decay beta={spectral_result['beta_exponent']:.2f}, "
+                        f"AI probability: {spectral_score*100:.1f}%"
+                    ),
+                })
+            except Exception as e:
+                print(f"[Forensics] Spectral analysis failed: {e}")
+
+        # ── Step 11: Color Space Forensics (Phase 8) ──
+        if self.color_forensics:
+            try:
+                color_result = self.color_forensics.analyze(image)
+                color_score = color_result["score"]
+                report["raw_scores"]["color_forensics"] = color_score
+
+                c_status = "fail" if color_score > 0.6 else "warn" if color_score > 0.4 else "pass"
+                report["forensic_checks"].append({
+                    "id": "color_forensics",
+                    "name": "Color Space Forensics",
+                    "status": c_status,
+                    "description": (
+                        f"Color anomaly score: {color_score*100:.1f}% "
+                        f"(LAB={color_result['lab_anomaly']:.2f}, "
+                        f"HSV={color_result['hsv_anomaly']:.2f})"
+                    ),
+                })
+            except Exception as e:
+                print(f"[Forensics] Color forensics failed: {e}")
+
+        # ── Step 12: Texture Synthesis Detection (Phase 8) ──
+        if self.texture_forensics:
+            try:
+                texture_result = self.texture_forensics.analyze(image)
+                texture_score = texture_result["score"]
+                report["raw_scores"]["texture_forensics"] = texture_score
+
+                t_status = "fail" if texture_score > 0.6 else "warn" if texture_score > 0.4 else "pass"
+                report["forensic_checks"].append({
+                    "id": "texture_forensics",
+                    "name": "Texture Synthesis Detection",
+                    "status": t_status,
+                    "description": (
+                        f"Texture anomaly score: {texture_score*100:.1f}% "
+                        f"(LBP={texture_result['lbp_anomaly']:.2f}, "
+                        f"GLCM={texture_result['glcm_anomaly']:.2f})"
+                    ),
+                })
+            except Exception as e:
+                print(f"[Forensics] Texture forensics failed: {e}")
+
+        # ── Step 13: Reconstruction Consistency (Phase 8) ──
+        if self.reconstruction_detector:
+            try:
+                recon_result = self.reconstruction_detector.analyze(image)
+                recon_score = recon_result["score"]
+                report["raw_scores"]["reconstruction"] = recon_score
+
+                r_status = "fail" if recon_score > 0.6 else "warn" if recon_score > 0.4 else "pass"
+                report["forensic_checks"].append({
+                    "id": "reconstruction",
+                    "name": "Reconstruction Consistency",
+                    "status": r_status,
+                    "description": (
+                        f"Reconstruction anomaly: {recon_score*100:.1f}% "
+                        f"(JPEG={recon_result['jpeg_consistency']:.2f}, "
+                        f"blur={recon_result['blur_consistency']:.2f})"
+                    ),
+                })
+            except Exception as e:
+                print(f"[Forensics] Reconstruction analysis failed: {e}")
+
+        # ── Step 14: Upsampling Artifact Detection (Phase 8) ──
+        if self.upsampling_detector:
+            try:
+                upsamp_result = self.upsampling_detector.analyze(image)
+                upsamp_score = upsamp_result["score"]
+                report["raw_scores"]["upsampling"] = upsamp_score
+                report["raw_scores"]["detected_patch_size"] = upsamp_result.get("detected_patch_size")
+
+                u_status = "fail" if upsamp_score > 0.6 else "warn" if upsamp_score > 0.4 else "pass"
+                patch_info = f", patch={upsamp_result['detected_patch_size']}px" if upsamp_result.get("detected_patch_size") else ""
+                report["forensic_checks"].append({
+                    "id": "upsampling",
+                    "name": "Latent Upsampling Detection",
+                    "status": u_status,
+                    "description": (
+                        f"Upsampling artifact score: {upsamp_score*100:.1f}%{patch_info}"
+                    ),
+                })
+            except Exception as e:
+                print(f"[Forensics] Upsampling detection failed: {e}")
+
+        # ── Step 15: Generator Attribution (Phase 8) ──
+        if self.generator_attributor:
+            try:
+                attr_result = self.generator_attributor.attribute_image(image, report["raw_scores"])
+                report["raw_scores"]["attribution"] = attr_result
+                if attr_result.get("is_ai") and attr_result.get("confidence", 0) > 0.3:
+                    report["forensic_checks"].append({
+                        "id": "attribution",
+                        "name": "AI Generator Attribution",
+                        "status": "info",
+                        "description": (
+                            f"Most likely generator: {attr_result['generator_family']} "
+                            f"({attr_result['confidence']*100:.0f}% match)"
+                        ),
+                    })
+                    report["generator_attribution"] = attr_result["generator_family"]
+            except Exception as e:
+                print(f"[Forensics] Generator attribution failed: {e}")
+
+        # ── Step 16: Uncertainty Quantification (Phase 8) ──
+        if self.uncertainty_quantifier:
+            try:
+                check_scores = {}
+                score_keys = ["neural_effective", "neural", "clip", "frequency", "ela",
+                              "noise", "pixel", "face", "gan_fingerprint", "inpainting_score",
+                              "spectral_decay", "color_forensics", "texture_forensics",
+                              "reconstruction", "upsampling"]
+                for key in score_keys:
+                    if key in report["raw_scores"] and report["raw_scores"][key] is not None:
+                        val = report["raw_scores"][key]
+                        if isinstance(val, (int, float)):
+                            check_scores[key] = float(val)
+
+                if len(check_scores) >= 3:
+                    uncertainty_result = self.uncertainty_quantifier.quantify(check_scores)
+                    report["raw_scores"]["uncertainty"] = uncertainty_result
+                    report["uncertainty"] = uncertainty_result["uncertainty"]
+                    report["confidence_level"] = uncertainty_result["confidence_level"]
+
+                    if uncertainty_result["confidence_level"] in ("low", "very_low"):
+                        report["forensic_checks"].append({
+                            "id": "uncertainty",
+                            "name": "Detection Confidence",
+                            "status": "warn",
+                            "description": uncertainty_result["recommendation"],
+                        })
+            except Exception as e:
+                print(f"[Forensics] Uncertainty quantification failed: {e}")
 
         # ── Final Verdict (V2: compression-aware ensemble) ──
         scores = report["raw_scores"]
@@ -570,13 +944,13 @@ class ImageForensicsDetector:
             return
 
         # Face micro-anomaly — only if very strong
-        if face > 0.80:
+        if face > 0.82 and neural > 0.60:
             report["verdict"] = "ai-generated"
-            report["confidence"] = min(90.0, 60.0 + face * 30)
+            report["confidence"] = min(82.0, 55.0 + (face + neural) / 2 * 30)
             return
 
         # Force inconclusive on high uncertainty
-        if neural_tta_std > 0.15 and not (meta > 0.8 or face > 0.80):
+        if neural_tta_std > 0.15 and not (meta > 0.8 or (face > 0.82 and neural > 0.60)):
             report["verdict"] = "inconclusive"
             report["confidence"] = 50.0
             report["forensic_checks"].append({
@@ -590,17 +964,16 @@ class ImageForensicsDetector:
             })
             return
 
-        # V2 model calibration: screenshots score ~0.80
-        # Only flag as AI if score is extremely high (0.97+)
-        if neural > 0.97 and not is_social_media and not is_compressed:
+        # Pretrained model has proper calibration — use reasonable thresholds
+        if neural > 0.65 and not is_social_media and not is_compressed:
             report["verdict"] = "ai-generated"
-            report["confidence"] = min(80.0, 55.0 + (neural - 0.95) * 500)
-        elif neural > 0.95:
+            report["confidence"] = min(80.0, 55.0 + neural * 30)
+        elif neural > 0.55:
             report["verdict"] = "inconclusive"
-            report["confidence"] = 50.0 + (neural - 0.90) * 200
+            report["confidence"] = 50.0 + (neural - 0.50) * 40
         else:
             report["verdict"] = "authentic"
-            report["confidence"] = min(85.0, 60.0 + (0.95 - neural) * 100)
+            report["confidence"] = min(85.0, 60.0 + (0.55 - neural) * 50)
 
     def _calibrate_neural_threshold(
         self,
@@ -611,48 +984,50 @@ class ImageForensicsDetector:
         neural_tta_std: float,
     ) -> dict:
         """
-        V2 model calibration with uncertainty-aware three-zone system.
+        Calibration for the pretrained HuggingFace deepfake detector.
 
-        The retrained V2 model's score distribution:
-          - Clean real photos: 0.80-0.94 (trained on compressed data, so clean looks unusual)
-          - Compressed real photos: 0.40-0.60 (model uncertain)
-          - Compressed AI photos: 0.40-0.60 (model uncertain, cannot distinguish)
-          - Clean AI photos: 0.95-0.99 (model confident)
+        The pretrained model (prithivMLmods/Deep-Fake-Detector-v2-Model)
+        has a properly calibrated output distribution:
+          - Real photos: typically 0.0-0.35
+          - AI-generated: typically 0.65-1.0
+          - Uncertain: 0.35-0.65
 
-        The model is only trustworthy at extremes (<0.35 or >0.95).
-        In the middle zone, TTA variance determines trustworthiness.
-        High TTA std (>0.15) means the model is guessing and verdict must be inconclusive.
+        Unlike the previous custom model (where real photos scored 0.80-0.94),
+        this model produces meaningful probabilities.
         """
-        fake_thresh = 0.95
-        real_thresh = 0.35
+        fake_thresh = 0.60
+        real_thresh = 0.40
         conf_cap = 95.0
         force_inconclusive = False
 
-        # HIGH TTA VARIANCE: Model is uncertain, force inconclusive.
-        # This is the most important rule. A std of 0.15+ means augmented
-        # views disagree by 30+ percentage points — the model is guessing.
-        if neural_tta_std > 0.15:
+        # HIGH TTA VARIANCE: Model is uncertain, force inconclusive
+        if neural_tta_std > 0.20:
             force_inconclusive = True
-            conf_cap = 60.0
-        elif neural_tta_std > 0.08:
-            fake_thresh = 0.97
-            real_thresh = 0.25
-            conf_cap = 80.0
+            conf_cap = 55.0
+        elif neural_tta_std > 0.12:
+            fake_thresh = 0.70
+            real_thresh = 0.30
+            conf_cap = 75.0
 
-        # Compression adjustments (minor since V2 model handles compression)
+        # Compression adjustments — social media compression adds artifacts
+        # but does NOT erase AI generation patterns. Be moderately conservative:
+        # raise threshold enough to filter compression false positives but
+        # not so much that we miss actual AI images shared via social media.
         if is_social_media:
-            fake_thresh = max(fake_thresh, 0.97)
-            conf_cap = min(conf_cap, 85.0)
+            fake_thresh = max(fake_thresh, 0.72)
+            real_thresh = min(real_thresh, 0.28)
+            conf_cap = min(conf_cap, 82.0)
         elif compression_severity == "heavy":
-            fake_thresh = max(fake_thresh, 0.96)
-            conf_cap = min(conf_cap, 88.0)
+            fake_thresh = max(fake_thresh, 0.68)
+            real_thresh = min(real_thresh, 0.32)
+            conf_cap = min(conf_cap, 85.0)
 
         if is_smartphone:
-            conf_cap = min(conf_cap, 90.0)
+            conf_cap = min(conf_cap, 92.0)
 
         return {
-            "fake_threshold": min(0.99, fake_thresh),
-            "real_threshold": max(0.15, real_thresh),
+            "fake_threshold": min(0.90, fake_thresh),
+            "real_threshold": max(0.10, real_thresh),
             "confidence_cap": conf_cap,
             "force_inconclusive": force_inconclusive,
         }
@@ -691,10 +1066,12 @@ class ImageForensicsDetector:
             report["confidence"] = min(99.0, 70.0 + meta * 25)
             return
 
-        # ── GATE 2: Face Micro-Anomaly (strong evidence only) ──
-        if face > 0.80:
+        # ── GATE 2: Face Micro-Anomaly ──
+        # Strong face evidence (0.82+) combined with neural agreement
+        neural = scores.get("neural_effective", scores.get("neural", 0.0))
+        if face > 0.82 and neural > 0.60:
             report["verdict"] = "ai-generated"
-            report["confidence"] = min(95.0, 65.0 + face * 30)
+            report["confidence"] = min(88.0, 60.0 + (face + neural) / 2 * 30)
             return
 
         # ── ADAPTIVE CALIBRATION ──
@@ -727,7 +1104,7 @@ class ImageForensicsDetector:
         # ── RULE 0: Forced Inconclusive on High Uncertainty ──
         # When TTA std > 0.15, the model is guessing. Never give a confident
         # verdict unless non-neural signals independently provide strong evidence.
-        if cal.get("force_inconclusive") and not (meta > 0.8 or face > 0.80 or noise > 0.65):
+        if cal.get("force_inconclusive") and not (meta > 0.8 or (face > 0.82 and neural > 0.60) or noise > 0.65):
             # Check if CLIP has a confident opinion even when ViT is uncertain
             clip_score = scores.get("clip")
             if clip_score is not None and clip_score > 0.70:
@@ -834,11 +1211,17 @@ class ImageForensicsDetector:
     ) -> Dict[str, Any]:
         """
         Analyzes a video by extracting evenly-spaced frames and running
-        the forensic pipeline on each. Aggregates per-frame scores.
+        the FULL forensic pipeline on each — not just ViT and frequency,
+        but also CLIP semantic analysis, ELA, noise patterns, and pixel
+        statistics.
 
-        When quality_metrics are provided (from VideoQualityAnalyzer),
-        frequency thresholds are adjusted to account for compression artifacts
-        that can mimic GAN fingerprints and cause false positives.
+        V3 improvements over V2:
+        - CLIP semantic analysis on sampled frames (strong for AI-gen videos)
+        - ELA analysis on frames (catches uniform compression in AI content)
+        - Noise pattern analysis across frames (AI noise differs from sensor noise)
+        - Pixel statistics aggregation across frames
+        - Better scoring: uses all signals instead of just ViT + frequency
+        - Compression-aware thresholds for all checks
         """
         if not os.path.exists(video_path):
             raise FileNotFoundError(f"Video not found at {video_path}")
@@ -856,27 +1239,35 @@ class ImageForensicsDetector:
         sample_count = min(num_frames, total_frames)
         indices = np.linspace(0, total_frames - 1, sample_count, dtype=int)
 
-        print(f"[Forensics] Video analysis: sampling {sample_count} frames from {total_frames} total")
+        print(f"[Forensics] Video analysis V3: sampling {sample_count} frames from {total_frames} total")
 
         # Compute compression adjustment factor
-        # High compression causes frequency artifacts that mimic GAN signatures
         compression_adj = 1.0
         if quality_metrics and "compression_score" in quality_metrics:
             comp = quality_metrics["compression_score"]
-            # Reduce frequency scores proportionally to compression level
-            # comp=0 -> no adjustment, comp=1.0 -> reduce freq score by 50%
             compression_adj = 1.0 - (comp * 0.5)
 
-        frame_scores: List[float] = []
-        freq_scores: List[float] = []
+        # Per-frame score accumulators
+        frame_scores: List[float] = []   # ViT neural scores
+        freq_scores: List[float] = []    # Frequency analysis
+        clip_scores: List[float] = []    # CLIP semantic AI probability
+        ela_scores: List[float] = []     # ELA anomaly scores
+        noise_scores: List[float] = []   # Noise pattern scores
+        pixel_scores: List[float] = []   # Pixel statistics scores
 
-        for idx in indices:
+        # CLIP is expensive — run on a subset of frames (every 4th)
+        clip_indices = set(range(0, sample_count, 4))
+
+        sampled_frames = []
+        for frame_idx, idx in enumerate(indices):
             cap.set(cv2.CAP_PROP_POS_FRAMES, int(idx))
             ret, frame = cap.read()
             if not ret or frame is None:
                 continue
 
-            # Neural score per frame (with compression-aware preprocessing)
+            sampled_frames.append(frame)
+
+            # ─── ViT Neural Score ───
             if self.neural_detector:
                 if quality_metrics and quality_metrics.get("compression_score", 0) > 0.3:
                     frame_processed, _ = self.preprocessor.normalize(
@@ -890,14 +1281,43 @@ class ImageForensicsDetector:
                 score, _ = self.neural_detector.predict(frame_processed)
                 frame_scores.append(score)
 
-            # Frequency score per frame (adjusted for compression)
+            # ─── Frequency Score ───
             freq_score, _ = self.freq_analyzer.detect_artifacts(frame)
             freq_score *= compression_adj
             freq_scores.append(freq_score)
 
+            # ─── CLIP Semantic Score (subset) ───
+            if self.clip_detector and frame_idx in clip_indices:
+                try:
+                    clip_prob, _ = self.clip_detector.predict(frame)
+                    clip_scores.append(clip_prob)
+                except Exception:
+                    pass
+
+            # ─── ELA Score ───
+            try:
+                ela_score_val, _ = self.ela_analyzer.analyze(frame)
+                ela_scores.append(ela_score_val)
+            except Exception:
+                pass
+
+            # ─── Noise Pattern Score ───
+            try:
+                noise_score_val, _ = self.noise_analyzer.analyze(frame)
+                noise_scores.append(noise_score_val)
+            except Exception:
+                pass
+
+            # ─── Pixel Statistics Score ───
+            try:
+                pixel_score_val, _ = self.pixel_analyzer.analyze(frame)
+                pixel_scores.append(pixel_score_val)
+            except Exception:
+                pass
+
         cap.release()
 
-        if not freq_scores:
+        if not freq_scores and not sampled_frames:
             return {
                 "verdict": "inconclusive",
                 "confidence": 0.0,
@@ -910,7 +1330,38 @@ class ImageForensicsDetector:
                 "raw_scores": {},
             }
 
-        # Aggregate scores
+        # ── Content type classification on video frames ──
+        if self.content_classifier and sampled_frames:
+            try:
+                video_content = self.content_classifier.classify_video_frames(
+                    sampled_frames, sample_count=5
+                )
+                if video_content["is_artistic"] and video_content["consensus_strength"] >= 0.6:
+                    return {
+                        "verdict": "artistic-content",
+                        "confidence": round(video_content["confidence"] * 100, 1),
+                        "content_type": video_content["content_type"],
+                        "content_type_display": video_content["content_type_display"],
+                        "forensic_checks": [{
+                            "id": "content_type",
+                            "name": "Content Type Detection",
+                            "status": "info",
+                            "description": (
+                                f"Video detected as {video_content['content_type_display']} "
+                                f"({video_content['consensus_strength']:.0%} frame consensus). "
+                                f"Deepfake analysis does not apply to animated/artistic content."
+                            ),
+                        }],
+                        "raw_scores": {
+                            "content_classification": video_content["category_scores"],
+                            "frame_votes": video_content["frame_votes"],
+                            "consensus_strength": video_content["consensus_strength"],
+                        },
+                    }
+            except Exception as e:
+                print(f"[Forensics] Video content classification failed: {e}")
+
+        # ─── Aggregate All Scores ───
         report: Dict[str, Any] = {
             "verdict": "authentic",
             "confidence": 0.0,
@@ -919,8 +1370,8 @@ class ImageForensicsDetector:
         }
 
         # Frequency analysis aggregate
-        avg_freq = float(np.mean(freq_scores))
-        max_freq = float(np.max(freq_scores))
+        avg_freq = float(np.mean(freq_scores)) if freq_scores else 0
+        max_freq = float(np.max(freq_scores)) if freq_scores else 0
         report["raw_scores"]["frequency_avg"] = avg_freq
         report["raw_scores"]["frequency_max"] = max_freq
 
@@ -939,14 +1390,14 @@ class ImageForensicsDetector:
             "description": desc,
         })
 
-        # Neural aggregate (if available)
+        # Neural ViT aggregate
+        avg_neural = 0.5
         if frame_scores:
             avg_neural = float(np.mean(frame_scores))
             max_neural = float(np.max(frame_scores))
             report["raw_scores"]["neural_avg"] = avg_neural
             report["raw_scores"]["neural_max"] = max_neural
 
-            # V2 calibration: real video frames score 0.80-0.94
             status = "fail" if avg_neural > 0.97 else "warn" if avg_neural > 0.95 else "pass"
             desc = (
                 f"ViT-B/16 detected deepfake patterns in video frames "
@@ -957,6 +1408,70 @@ class ImageForensicsDetector:
             report["forensic_checks"].append({
                 "id": "video_neural",
                 "name": "ViT-B/16 Video Analysis",
+                "status": status,
+                "description": desc,
+            })
+
+        # CLIP semantic aggregate (strongest signal for AI-gen content)
+        avg_clip = 0.5
+        if clip_scores:
+            avg_clip = float(np.mean(clip_scores))
+            max_clip = float(np.max(clip_scores))
+            report["raw_scores"]["clip_avg"] = avg_clip
+            report["raw_scores"]["clip_max"] = max_clip
+
+            status = "fail" if avg_clip > 0.65 else "warn" if avg_clip > 0.52 else "pass"
+            if avg_clip > 0.65:
+                desc = f"CLIP semantic analysis: {avg_clip * 100:.1f}% AI probability across {len(clip_scores)} frames (strong AI signal)"
+            elif avg_clip > 0.52:
+                desc = f"CLIP semantic analysis: {avg_clip * 100:.1f}% AI probability (mild AI patterns)"
+            else:
+                desc = f"CLIP semantic analysis: natural content ({avg_clip * 100:.1f}% AI probability)"
+            report["forensic_checks"].append({
+                "id": "video_clip",
+                "name": "CLIP Semantic Video Analysis",
+                "status": status,
+                "description": desc,
+            })
+
+        # ELA aggregate
+        avg_ela = 0.0
+        if ela_scores:
+            avg_ela = float(np.mean(ela_scores))
+            report["raw_scores"]["ela_avg"] = avg_ela
+            status = "fail" if avg_ela > 0.6 else "warn" if avg_ela > 0.3 else "pass"
+            desc = f"Frame ELA: avg anomaly score {avg_ela:.2f} across {len(ela_scores)} frames"
+            report["forensic_checks"].append({
+                "id": "video_ela",
+                "name": "Video ELA Analysis",
+                "status": status,
+                "description": desc,
+            })
+
+        # Noise pattern aggregate
+        avg_noise = 0.0
+        if noise_scores:
+            avg_noise = float(np.mean(noise_scores))
+            report["raw_scores"]["noise_avg"] = avg_noise
+            status = "fail" if avg_noise > 0.6 else "warn" if avg_noise > 0.3 else "pass"
+            desc = f"Noise patterns: avg anomaly {avg_noise:.2f} across {len(noise_scores)} frames"
+            report["forensic_checks"].append({
+                "id": "video_noise",
+                "name": "Video Noise Pattern Analysis",
+                "status": status,
+                "description": desc,
+            })
+
+        # Pixel statistics aggregate
+        avg_pixel = 0.0
+        if pixel_scores:
+            avg_pixel = float(np.mean(pixel_scores))
+            report["raw_scores"]["pixel_avg"] = avg_pixel
+            status = "fail" if avg_pixel > 0.6 else "warn" if avg_pixel > 0.3 else "pass"
+            desc = f"Pixel statistics: avg anomaly {avg_pixel:.2f} across {len(pixel_scores)} frames"
+            report["forensic_checks"].append({
+                "id": "video_pixel",
+                "name": "Video Pixel Statistics",
                 "status": status,
                 "description": desc,
             })
@@ -975,26 +1490,76 @@ class ImageForensicsDetector:
                 ),
             })
 
-        # Final verdict
-        if frame_scores:
-            # Use neural as primary signal for video
-            combined = avg_neural * 0.7 + avg_freq * 0.3
-        else:
-            combined = avg_freq
+        # ─── V3 Multi-Signal Verdict ───
+        # Weight all available signals for the final verdict.
+        # ViT is the primary neural signal for video frames.
+        # CLIP zero-shot is less reliable on video frames than still images
+        # (trained on still images, video frames have motion blur / different
+        #  characteristics), so we give it lower weight for video analysis.
+        signal_weights = []
+        signal_scores = []
 
-        # V2 calibration for video (neural+freq weighted combination)
-        # Neural scores are 0.80-0.94 for real, so combined will be high too
-        if combined > 0.96:
+        if frame_scores:
+            signal_weights.append(2.5)  # ViT is the strongest per-frame signal
+            signal_scores.append(avg_neural)
+
+        if clip_scores:
+            # CLIP weight reduced for video (less reliable on video frames)
+            signal_weights.append(1.2)
+            signal_scores.append(avg_clip)
+
+        if freq_scores:
+            signal_weights.append(0.6)
+            signal_scores.append(avg_freq)
+
+        if ela_scores:
+            # ELA is less reliable on video frames (compression artifacts)
+            signal_weights.append(0.4)
+            signal_scores.append(avg_ela)
+
+        if noise_scores:
+            # Noise analysis on video frames is noisy itself — video compression
+            # destroys sensor noise patterns in both real AND AI video.
+            # Dampen to avoid false positives from compression artifacts.
+            signal_weights.append(0.3)
+            signal_scores.append(avg_noise)
+
+        if pixel_scores:
+            # Pixel stats also affected by video compression — reduce weight
+            signal_weights.append(0.3)
+            signal_scores.append(avg_pixel)
+
+        if signal_weights:
+            total_w = sum(signal_weights)
+            combined = sum(s * w for s, w in zip(signal_scores, signal_weights)) / total_w
+        else:
+            combined = 0.5
+
+        report["raw_scores"]["v3_combined"] = round(combined, 4)
+
+        # Verdict thresholds — adjusted for compression
+        fake_thresh = 0.58
+        real_thresh = 0.38
+        conf_cap = 92.0
+
+        if quality_metrics and "compression_score" in quality_metrics:
+            comp = quality_metrics["compression_score"]
+            if comp > 0.5:
+                fake_thresh += 0.04
+                conf_cap -= 8.0
+            elif comp > 0.3:
+                fake_thresh += 0.02
+                conf_cap -= 4.0
+
+        if combined > fake_thresh:
             report["verdict"] = "ai-generated"
-            report["confidence"] = min(95.0, 60.0 + (combined - 0.95) * 700)
-        elif combined < 0.92:
+            report["confidence"] = round(min(conf_cap, 55.0 + (combined - fake_thresh) * 200), 1)
+        elif combined < real_thresh:
             report["verdict"] = "authentic"
-            report["confidence"] = min(95.0, 60.0 + (0.92 - combined) * 150)
+            report["confidence"] = round(min(conf_cap, 55.0 + (real_thresh - combined) * 200), 1)
         else:
             report["verdict"] = "inconclusive"
-            report["confidence"] = 50.0 + abs(combined - 0.94) * 300
-
-        report["confidence"] = round(report["confidence"], 1)
+            report["confidence"] = round(50.0 + abs(combined - 0.48) * 100, 1)
 
         if not self.neural_detector:
             report["forensic_checks"].append({

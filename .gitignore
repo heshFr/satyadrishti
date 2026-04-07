@@ -52,6 +52,9 @@ images/
 # Recordings (user voice data)
 recordings/
 
+# Audit archive (security — never commit)
+data/.audit_archive/
+
 # Design mockups
 stitch_satya_drishti/
 
@@ -68,3 +71,6 @@ stitch_satya_drishti/
 # Claude Code local settings
 .claude/settings.local.json
 .vercel
+
+# Cloudflare tunnel session id (runtime state)
+sessionId.txt

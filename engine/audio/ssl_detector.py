@@ -54,20 +54,21 @@ except ImportError:
 # Bounds natively relaxed to accommodate highly-compressed telephony codecs (e.g. OPUS)
 REAL_SPEECH_NORMS = {
     # Temporal: frame-to-frame cosine similarity between consecutive hidden states
-    "temporal_similarity_mean": (0.85, 0.975),  # Relaxed upper bound for telephony 
-    "temporal_similarity_std": (0.010, 0.06),   # Lowered bound to tolerate codec smoothing
+    # Widened to accommodate telephony codecs, background noise, and varied recording conditions
+    "temporal_similarity_mean": (0.80, 0.985),  # Wide range: noisy speech → clean telephony
+    "temporal_similarity_std": (0.005, 0.08),   # Very low std OK for quiet recordings
 
     # Kurtosis of hidden state activations (across embedding dims)
-    "activation_kurtosis": (2.0, 6.0),           # real speech: meso- to leptokurtic
+    "activation_kurtosis": (1.5, 7.0),           # Wider: real speech varies widely
 
     # Variance of hidden states across time (per-dim, then averaged)
-    "temporal_variance": (0.02, 0.15),            # real speech: moderate variance
+    "temporal_variance": (0.01, 0.20),            # Wider: quiet vs loud environments
 
     # Cross-layer cosine similarity (between early and late layers)
-    "cross_layer_similarity": (0.3, 0.75),        # real speech: moderate divergence
+    "cross_layer_similarity": (0.20, 0.80),       # Wider: language/accent variability
 
     # Entropy of attention-like features (cosine similarity matrix)
-    "frame_diversity": (0.4, 0.95),               # Re-calibrated for phone lines
+    "frame_diversity": (0.30, 0.97),              # Wider: monotone speech is OK for real too
 }
 
 

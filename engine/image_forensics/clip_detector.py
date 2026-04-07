@@ -146,11 +146,12 @@ class CLIPDetector:
 
     @torch.no_grad()
     def extract_embedding(self, image: np.ndarray) -> torch.Tensor:
-        """Extract CLIP image embedding (for linear probe or fusion)."""
+        """Extract CLIP image embedding (768-dim, L2-normalized)."""
         rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         inputs = self.processor(images=rgb, return_tensors="pt")
-        inputs = {k: v.to(self.device) for k, v in inputs.items()}
-        features = self.model.get_image_features(**inputs)
+        pixel_values = inputs["pixel_values"].to(self.device)
+        vision_out = self.model.vision_model(pixel_values=pixel_values)
+        features = self.model.visual_projection(vision_out.pooler_output)
         # L2 normalize
         features = features / features.norm(dim=-1, keepdim=True)
         return features

@@ -134,9 +134,10 @@ class CoercionDetector:
 
         with torch.no_grad():
             outputs = self.model(**inputs)
-            # Temperature scaling for better-calibrated confidence
-            # T > 1 softens overconfident predictions
-            temperature = 1.5
+            # Temperature scaling: T=1.2 provides mild calibration
+            # without making the model too under-confident (old T=1.5
+            # was too aggressive, making confident detections appear uncertain)
+            temperature = 1.2
             scaled_logits = outputs.logits / temperature
             probs = torch.softmax(scaled_logits, dim=-1).squeeze()
 

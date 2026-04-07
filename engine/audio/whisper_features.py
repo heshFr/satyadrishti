@@ -50,23 +50,26 @@ except ImportError:
 
 # ── Known norms for real speech in Whisper feature space ──
 REAL_SPEECH_NORMS = {
+    # Widened ranges to reduce false positives on real-world audio
+    # (phone recordings, noisy environments, varied microphones)
+
     # Log-mel spectrogram statistics
-    "mel_mean": (-3.5, -1.0),                # typical mean log-mel energy
-    "mel_std": (0.8, 2.5),                   # real speech: moderate spread
-    "mel_spectral_flatness": (0.05, 0.35),   # flat=noise, peaked=tonal; speech is in between
-    "mel_spectral_tilt": (-0.08, -0.005),     # speech has negative tilt (more low-freq energy)
+    "mel_mean": (-4.5, -0.5),                # wider: varied gain/recording levels
+    "mel_std": (0.5, 3.0),                   # wider: quiet rooms vs noisy streets
+    "mel_spectral_flatness": (0.03, 0.45),   # wider: breathy/noisy speech is OK
+    "mel_spectral_tilt": (-0.12, 0.005),     # wider: recording equipment varies
 
     # Encoder hidden state statistics
-    "encoder_temporal_sim_mean": (0.80, 0.96),  # frame-to-frame similarity
-    "encoder_temporal_sim_std": (0.02, 0.08),   # variation in frame transitions
-    "encoder_activation_std": (0.3, 1.5),       # activation spread
+    "encoder_temporal_sim_mean": (0.75, 0.98),  # wider: noisy vs clean recordings
+    "encoder_temporal_sim_std": (0.01, 0.10),   # wider: monotone vs expressive
+    "encoder_activation_std": (0.2, 2.0),       # wider: varied speaker styles
 
     # Modulation spectrum
-    "modulation_4hz_power": (0.02, 0.25),       # syllabic modulation (~4Hz)
-    "modulation_30hz_power": (0.005, 0.08),     # phonetic modulation (~30Hz)
+    "modulation_4hz_power": (0.01, 0.35),       # wider: slow vs fast speakers
+    "modulation_30hz_power": (0.003, 0.12),     # wider: recording quality varies
 
     # Delta features (rate of change in mel spectrogram)
-    "delta_energy_std": (0.1, 0.8),             # energy dynamics
+    "delta_energy_std": (0.05, 1.0),            # wider: more tolerance
 }
 
 

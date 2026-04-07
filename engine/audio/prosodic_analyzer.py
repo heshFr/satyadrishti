@@ -44,15 +44,17 @@ logger = logging.getLogger(__name__)
 # literature, assuming adult speakers, conversational register).
 # ---------------------------------------------------------------------------
 HUMAN_NORMS = {
-    "jitter_local": (0.008, 0.050),       # 0.8% – 5.0% (Tightened lower bound for AI)
-    "jitter_rap": (0.004, 0.030),          # relative average perturbation
-    "shimmer_local": (0.020, 0.100),       # 2.0% – 10%
-    "shimmer_apq": (0.015, 0.080),         # amplitude perturbation quotient
-    "hnr_mean": (8.0, 22.0),              # dB; overly high is AI
-    "f0_cv": (0.15, 0.50),                # coefficient of variation of F0
-    "speech_rate": (2.5, 6.5),             # syllables per second
-    "pause_rate": (0.10, 0.60),            # pauses per second of speech
-    "pause_duration_mean": (0.15, 0.80),   # seconds
+    # Widened ranges to reduce false positives on real-world audio
+    # (phone recordings, noisy environments, non-native speakers, elderly/children)
+    "jitter_local": (0.005, 0.065),       # 0.5% – 6.5%  (low jitter OK for trained speakers)
+    "jitter_rap": (0.002, 0.040),          # relative average perturbation
+    "shimmer_local": (0.015, 0.130),       # 1.5% – 13%   (high shimmer in loud/emotional speech)
+    "shimmer_apq": (0.010, 0.100),         # amplitude perturbation quotient
+    "hnr_mean": (6.0, 25.0),              # dB; wider range for varied recording conditions
+    "f0_cv": (0.10, 0.60),                # wider for monotone vs expressive speakers
+    "speech_rate": (2.0, 7.5),             # wider: slow elderly to fast young speakers
+    "pause_rate": (0.05, 0.80),            # wider: some people pause more/less
+    "pause_duration_mean": (0.10, 1.00),   # wider: dramatic pauses are fine
 }
 
 # Minimum audio duration (seconds) for meaningful analysis.
@@ -239,10 +241,18 @@ class ProsodicAnalyzer:
         f0_mean = float(np.mean(voiced_f0))
         f0_std = float(np.std(voiced_f0))
         f0_range = float(np.ptp(voiced_f0))  # max - min
+
+        # F0 delta (frame-to-frame change) statistics
+        f0_delta = np.diff(voiced_f0)
+        f0_delta_std = float(np.std(f0_delta)) if len(f0_delta) > 1 else 0.0
+        f0_delta_mean = float(np.mean(np.abs(f0_delta))) if len(f0_delta) > 1 else 0.0
+
         return {
             "f0_mean": f0_mean,
             "f0_std": f0_std,
             "f0_range": f0_range,
+            "f0_delta_std": f0_delta_std,
+            "f0_delta_mean": f0_delta_mean,
         }
 
     # ------------------------------------------------------------------
@@ -284,7 +294,14 @@ class ProsodicAnalyzer:
         else:
             jitter_rap = jitter_local / 2.0
 
-        return {"jitter_local": jitter_local, "jitter_rap": jitter_rap}
+        # Jitter variability (std of per-cycle jitter — real is more variable)
+        jitter_local_std = float(np.std(diffs / (mean_period + 1e-8)))
+
+        return {
+            "jitter_local": jitter_local,
+            "jitter_rap": jitter_rap,
+            "jitter_local_std": jitter_local_std,
+        }
 
     # ------------------------------------------------------------------
     # Shimmer (cycle-to-cycle amplitude variation)
@@ -682,6 +699,40 @@ class ProsodicAnalyzer:
         if pr > 0 and pm > 0 and ps < 0.05:
             anomalies.append("too_uniform_pauses")
 
+        # --- Modern TTS Checks (ElevenLabs-class) --------------------------
+        # These checks target artifacts that persist even in high-quality TTS
+        # that adds simulated jitter/shimmer/pauses to sound natural.
+
+        # Jitter regularity: real jitter is random per-cycle; TTS jitter is
+        # often periodic or uniformly distributed. Check if jitter is present
+        # but too consistent (low std relative to mean).
+        jitter_std = features.get("jitter_local_std", 0.0)
+        if jl > 0 and jitter_std > 0:
+            jitter_cv = jitter_std / (jl + 1e-10)
+            # Real: jitter CV > 0.5 (highly variable), TTS: CV < 0.3
+            if jitter_cv < 0.25:
+                anomalies.append("too_regular_jitter_pattern")
+
+        # Shimmer-jitter correlation: in real speech, jitter and shimmer are
+        # positively correlated (both increase with vocal effort). TTS adds
+        # them independently, so correlation is low.
+        sa = features.get("shimmer_apq", 0.0)
+        if jl > 0 and sl > 0:
+            # This is a coarse check - both very low = suspicious combo
+            if jl < 0.01 and sl < 0.03:
+                anomalies.append("both_jitter_shimmer_very_low")
+
+        # F0 contour smoothness: compute from f0_delta_std if available
+        f0_delta_std = features.get("f0_delta_std", 0.0)
+        if f0_delta_std > 0 and f0_delta_std < 2.0:
+            # Very smooth F0 contour (delta std < 2 Hz per frame)
+            anomalies.append("overly_smooth_f0_contour")
+
+        # HNR + low jitter combination: the "too perfect" signature
+        # Real voices almost never have HNR > 20 AND jitter < 0.01
+        if hnr > 20 and jl > 0 and jl < 0.01:
+            anomalies.append("perfect_voice_quality_signature")
+
         return anomalies
 
     # ------------------------------------------------------------------
@@ -713,6 +764,10 @@ class ProsodicAnalyzer:
             "abnormally_high_hnr",
             "too_regular_f0",
             "no_pauses_detected",
+            "too_regular_jitter_pattern",
+            "perfect_voice_quality_signature",
+            "both_jitter_shimmer_very_low",
+            "overly_smooth_f0_contour",
         }
         anomaly_score = 0.0
         for a in anomalies:
