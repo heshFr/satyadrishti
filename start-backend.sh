@@ -22,6 +22,15 @@ export TRANSFORMERS_VERBOSITY=error
 export HF_HUB_OFFLINE=1
 export TRANSFORMERS_OFFLINE=1
 
+# Load environment from .env if present (DB URL, JWT secret, CORS, etc.)
+if [ -f "$PROJECT_DIR/.env" ]; then
+    echo "  Loading .env..."
+    set -a
+    # shellcheck disable=SC1091
+    source "$PROJECT_DIR/.env"
+    set +a
+fi
+
 echo ""
 echo "  ╔═══════════════════════════════════════════╗"
 echo "  ║   SATYA DRISHTI — Backend Launcher        ║"
