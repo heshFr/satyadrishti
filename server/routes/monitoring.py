@@ -161,14 +161,17 @@ async def deep_health_check():
         "components": {},
     }
 
-    # Database check
+    # Database check — actually round-trip a query against the configured DB
+    db_type = "postgresql" if "postgresql" in DATABASE_URL else "sqlite"
     try:
+        from sqlalchemy import text
         from ..database import AsyncSessionLocal
         async with AsyncSessionLocal() as session:
-            await session.execute("SELECT 1" if "sqlite" not in DATABASE_URL else None)
-        health["components"]["database"] = {"status": "ok", "type": "postgresql" if "postgresql" in DATABASE_URL else "sqlite"}
+            await session.execute(text("SELECT 1"))
+        health["components"]["database"] = {"status": "ok", "type": db_type}
     except Exception as e:
-        health["components"]["database"] = {"status": "ok", "type": "sqlite"}  # SQLite always works locally
+        health["status"] = "degraded"
+        health["components"]["database"] = {"status": "error", "type": db_type, "error": str(e)[:200]}
 
     # Inference engine check
     if INFERENCE_URL:
