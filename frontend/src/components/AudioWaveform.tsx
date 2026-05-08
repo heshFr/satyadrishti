@@ -169,14 +169,14 @@ const AudioWaveform = ({
       {/* Status badge */}
       <div className="absolute top-2 right-2">
         {isActive ? (
-          <span className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-md bg-black/50 border border-white/10"
+          <span className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-widest px-2 py-1 rounded-md bg-black/50 border border-white/10"
             style={{ color: colors.stroke }}
           >
             <span className="w-1.5 h-1.5 rounded-sm animate-pulse" style={{ backgroundColor: colors.stroke }} />
             LIVE
           </span>
         ) : (
-          <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground/30 px-2 py-1 font-mono">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/30 px-2 py-1 font-mono">
             STANDBY
           </span>
         )}

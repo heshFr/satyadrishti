@@ -37,7 +37,7 @@ const ThreatGauge = ({ value, size = 128 }: { value: number; size?: number }) =>
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <span className="text-3xl font-black text-on-surface">{score}</span>
-        <span className="text-[10px] uppercase tracking-widest font-bold" style={{ color }}>{label}</span>
+        <span className="text-[12px] uppercase tracking-widest font-bold" style={{ color }}>{label}</span>
       </div>
     </div>
   );
@@ -331,7 +331,7 @@ const CallProtection = () => {
                     <MaterialIcon icon={s.icon} size={26} />
                   </div>
                   <div>
-                    <p className="text-[11px] font-bold text-on-surface-variant uppercase tracking-widest">{s.label}</p>
+                    <p className="text-[13px] font-bold text-on-surface-variant uppercase tracking-widest">{s.label}</p>
                     <p className="text-lg font-black text-on-surface mt-0.5">{s.value}</p>
                   </div>
                 </div>
@@ -397,7 +397,7 @@ const CallProtection = () => {
                   <MaterialIcon icon="settings_input_component" size={24} />
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Signal Spectrum</p>
+                  <p className="text-[12px] font-bold text-on-surface-variant uppercase tracking-widest">Signal Spectrum</p>
                   <div className="flex items-end gap-0.5 h-6 mt-1">
                     {[...Array(8)].map((_, i) => (
                       <motion.div
@@ -415,7 +415,7 @@ const CallProtection = () => {
                   <MaterialIcon icon="memory" size={24} />
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Engine Status</p>
+                  <p className="text-[12px] font-bold text-on-surface-variant uppercase tracking-widest">Engine Status</p>
                   <p className="text-xl font-black text-secondary">9 LAYERS <span className="text-xs text-on-surface-variant font-normal">ACTIVE</span></p>
                 </div>
               </div>
@@ -424,7 +424,7 @@ const CallProtection = () => {
                   <MaterialIcon icon="fingerprint" size={24} />
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Evidence Vault</p>
+                  <p className="text-[12px] font-bold text-on-surface-variant uppercase tracking-widest">Evidence Vault</p>
                   <p className="text-xl font-black text-on-surface">{cp.callSummary ? "SAVED" : "AUTO-SYNC"}</p>
                 </div>
               </div>
@@ -433,7 +433,7 @@ const CallProtection = () => {
                   <MaterialIcon icon="mic" size={24} />
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Audio Level</p>
+                  <p className="text-[12px] font-bold text-on-surface-variant uppercase tracking-widest">Audio Level</p>
                   <div className="flex items-center gap-2 mt-1">
                     <div className="h-2 w-24 bg-surface-container-highest rounded-full overflow-hidden">
                       <motion.div
@@ -466,7 +466,7 @@ const CallProtection = () => {
                       Analyzing voice stream...
                     </span>
                     <div className="h-px w-12 bg-primary/30" />
-                    <span className="text-[10px] text-secondary font-bold uppercase tracking-widest animate-pulse">
+                    <span className="text-[12px] text-secondary font-bold uppercase tracking-widest animate-pulse">
                       System Status: MONITORING LIVE
                     </span>
                   </div>
@@ -498,7 +498,7 @@ const CallProtection = () => {
                       },
                     ].map((bar) => (
                       <div key={bar.label} className="space-y-1">
-                        <p className="text-[10px] text-on-surface-variant uppercase font-bold tracking-widest">{bar.label}</p>
+                        <p className="text-[12px] text-on-surface-variant uppercase font-bold tracking-widest">{bar.label}</p>
                         <div className="flex items-center gap-2">
                           <div className="h-1.5 w-32 bg-surface-container-highest rounded-full overflow-hidden">
                             <motion.div
@@ -536,7 +536,7 @@ const CallProtection = () => {
                         <span className="text-error font-headline font-black text-lg uppercase tracking-wider">
                           Biological Veto Triggered
                         </span>
-                        <span className="px-3 py-0.5 rounded-full bg-error/20 text-error text-[10px] font-bold uppercase tracking-widest border border-error/30">
+                        <span className="px-3 py-0.5 rounded-full bg-error/20 text-error text-[12px] font-bold uppercase tracking-widest border border-error/30">
                           AI Clone Detected
                         </span>
                       </div>
@@ -567,7 +567,7 @@ const CallProtection = () => {
                       </h2>
                     </div>
                     <div className="flex gap-2">
-                      <span className="text-[10px] font-bold text-secondary bg-secondary/10 px-3 py-1.5 rounded-full border border-secondary/20">
+                      <span className="text-[12px] font-bold text-secondary bg-secondary/10 px-3 py-1.5 rounded-full border border-secondary/20">
                         {cp.isScreenShare ? "SCREEN SHARE" : "AUDIO ONLY"} · LIVE
                       </span>
                     </div>
@@ -588,7 +588,7 @@ const CallProtection = () => {
                       <MaterialIcon icon="timeline" className="text-primary" size={24} />
                       <h3 className="font-headline font-bold text-on-surface text-xl">Forensic Timeline</h3>
                     </div>
-                    <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest border border-outline-variant/10 px-3 py-1 rounded-full bg-surface-container-high">
+                    <span className="text-[12px] font-bold text-on-surface-variant uppercase tracking-widest border border-outline-variant/10 px-3 py-1 rounded-full bg-surface-container-high">
                       Duration: LIVE
                     </span>
                   </div>
@@ -621,7 +621,7 @@ const CallProtection = () => {
                             </span>
                             {/* Subtitle text if active */}
                             {step.active && (
-                              <span className="text-[10px] text-primary/70 font-semibold tracking-widest uppercase mt-0.5">
+                              <span className="text-[12px] text-primary/70 font-semibold tracking-widest uppercase mt-0.5">
                                 Processing...
                               </span>
                             )}
@@ -651,20 +651,20 @@ const CallProtection = () => {
                       </div>
                     </div>
                     {cp.speakerVerified && (
-                      <span className="bg-secondary/10 text-secondary text-[10px] font-bold px-4 py-1.5 rounded-full uppercase tracking-tighter border border-secondary/20">
+                      <span className="bg-secondary/10 text-secondary text-[12px] font-bold px-4 py-1.5 rounded-full uppercase tracking-tighter border border-secondary/20">
                         Trusted Profile
                       </span>
                     )}
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="bg-surface-container-lowest p-4 rounded-xl border border-outline-variant/10">
-                      <p className="text-[10px] text-on-surface-variant uppercase font-bold mb-2 tracking-widest">Clone Prob.</p>
+                      <p className="text-[12px] text-on-surface-variant uppercase font-bold mb-2 tracking-widest">Clone Prob.</p>
                       <p className="text-2xl font-black text-on-surface">
                         {cp.audio.confidence > 0 ? `${cp.audio.confidence.toFixed(1)}%` : `${(cp.threatEscalation * 5).toFixed(3)}%`}
                       </p>
                     </div>
                     <div className="bg-surface-container-lowest p-4 rounded-xl border border-outline-variant/10">
-                      <p className="text-[10px] text-on-surface-variant uppercase font-bold mb-2 tracking-widest">Identity Score</p>
+                      <p className="text-[12px] text-on-surface-variant uppercase font-bold mb-2 tracking-widest">Identity Score</p>
                       <p className="text-2xl font-black text-secondary">
                         {cp.speakerVerified ? (
                           <>{(cp.speakerSimilarity * 100).toFixed(1)}<span className="text-sm font-bold opacity-50">/100</span></>
@@ -676,7 +676,7 @@ const CallProtection = () => {
                   {/* Uncertainty / Human Review */}
                   {cp.audio.verdict === "uncertain" && (
                      <div className="mt-4 p-4 rounded-xl bg-error/10 border border-error/50 flex flex-col gap-2 relative overflow-hidden shadow-inner">
-                       <div className="absolute top-0 right-0 py-1 px-3 bg-error text-surface font-bold text-[10px] uppercase tracking-widest rounded-bl-lg">
+                       <div className="absolute top-0 right-0 py-1 px-3 bg-error text-surface font-bold text-[12px] uppercase tracking-widest rounded-bl-lg">
                          Requires Action
                        </div>
                        <div className="flex items-center gap-2 text-error font-bold text-lg mt-1">
@@ -695,7 +695,7 @@ const CallProtection = () => {
                   {/* Explainability Mode */}
                   {explainMode && cp.audio.status !== "idle" && cp.audio.verdict !== "uncertain" && (
                     <div className="mt-4 p-4 rounded-xl bg-surface-container-lowest border border-outline-variant/10 shadow-inner">
-                      <p className="text-[10px] text-on-surface-variant uppercase font-bold mb-3 tracking-widest">
+                      <p className="text-[12px] text-on-surface-variant uppercase font-bold mb-3 tracking-widest">
                         WHY THIS IS {cp.threatEscalation > 0.5 ? "SYNTHETIC" : "AUTHENTIC"}:
                       </p>
                       <ul className="space-y-2 text-sm text-on-surface">
@@ -742,7 +742,7 @@ const CallProtection = () => {
                     <ThreatGauge value={cp.threatEscalation} />
                     <div className="flex-1 space-y-6">
                       <div>
-                        <div className="flex justify-between text-[10px] uppercase font-bold text-on-surface-variant mb-2 tracking-widest">
+                        <div className="flex justify-between text-[12px] uppercase font-bold text-on-surface-variant mb-2 tracking-widest">
                           <span>Clone Risk</span>
                           <span className={cp.threatEscalation > 0.5 ? "text-error" : "text-secondary"}>
                             {cp.threatEscalation > 0.7 ? "High" : cp.threatEscalation > 0.3 ? "Medium" : "Low"}
@@ -757,7 +757,7 @@ const CallProtection = () => {
                         </div>
                       </div>
                       <div>
-                        <div className="flex justify-between text-[10px] uppercase font-bold text-on-surface-variant mb-2 tracking-widest">
+                        <div className="flex justify-between text-[12px] uppercase font-bold text-on-surface-variant mb-2 tracking-widest">
                           <span>Coercion Risk</span>
                           <span className={cp.text.status === "danger" ? "text-error" : "text-secondary"}>
                             {cp.text.status === "danger" ? "High" : cp.text.status === "warning" ? "Elevated" : "Negligible"}
@@ -851,12 +851,12 @@ const CallProtection = () => {
                         <MaterialIcon icon="data_object" size={20} className="text-primary" />
                         <span className="font-bold uppercase tracking-widest text-xs text-primary">Live Audit Output</span>
                       </div>
-                      <span className="text-[10px] font-bold bg-primary/10 text-primary px-3 py-1 rounded-full border border-primary/20 tracking-widest">
+                      <span className="text-[12px] font-bold bg-primary/10 text-primary px-3 py-1 rounded-full border border-primary/20 tracking-widest">
                         DECISION_OBJECT
                       </span>
                     </div>
                     <div className="p-5 overflow-x-auto max-h-[300px] overflow-y-auto custom-scrollbar">
-                      <pre className="font-mono text-[11px] md:text-xs text-secondary-container leading-relaxed">
+                      <pre className="font-mono text-[13px] md:text-xs text-secondary-container leading-relaxed">
                         <code>{JSON.stringify(cp.decisionPayload, null, 2)}</code>
                       </pre>
                     </div>
@@ -908,7 +908,7 @@ const CallProtection = () => {
                   </p>
                 </div>
                 <div className="flex flex-col items-center justify-center px-12 py-8 border-l border-outline-variant/20">
-                  <div className="text-[12px] font-bold text-on-surface-variant tracking-[0.3em] mb-3 uppercase">
+                  <div className="text-[14px] font-bold text-on-surface-variant tracking-[0.3em] mb-3 uppercase">
                     Confidence Interval
                   </div>
                   <div className={`text-7xl font-black drop-shadow-[0_0_10px_rgba(78,222,163,0.4)] ${fusionColor}`}>
@@ -954,7 +954,7 @@ const CallProtection = () => {
                       { label: "Final Score", value: `${(cp.callSummary.finalThreatScore * 100).toFixed(0)}%` },
                     ].map((stat) => (
                       <div key={stat.label} className="space-y-1">
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">{stat.label}</span>
+                        <span className="text-[12px] font-bold uppercase tracking-widest text-on-surface-variant">{stat.label}</span>
                         <p className="text-2xl font-headline font-black capitalize">{stat.value}</p>
                       </div>
                     ))}

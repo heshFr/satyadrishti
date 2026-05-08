@@ -22,6 +22,8 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<LoginResult>;
   register: (email: string, password: string, name: string) => Promise<void>;
   logout: () => void;
+  refreshUser: () => Promise<User | null>;
+  setUser: (u: User | null) => void;
   // OAuth
   startOAuth: (provider: "google" | "github") => Promise<void>;
   handleOAuthCallback: (provider: "google" | "github", code: string, state?: string) => Promise<void>;
@@ -143,6 +145,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
+  // ── Refresh user from /me ──
+  const refreshUser = useCallback(async (): Promise<User | null> => {
+    const token = localStorage.getItem("satya-token");
+    if (!token) return null;
+    try {
+      const fresh = await api.auth.me();
+      setUser(fresh);
+      return fresh;
+    } catch {
+      return null;
+    }
+  }, []);
+
   // ── OAuth: Start Flow ──
   const startOAuth = useCallback(async (provider: "google" | "github") => {
     try {
@@ -240,6 +255,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         register,
         logout,
+        refreshUser,
+        setUser,
         startOAuth,
         handleOAuthCallback,
         setup2FA,

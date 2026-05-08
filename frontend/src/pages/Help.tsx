@@ -172,7 +172,7 @@ const Help = () => {
                 <h3 className="font-headline font-bold text-lg">System Health</h3>
                 <div className="flex items-center gap-2">
                   <span className="h-2 w-2 rounded-full bg-secondary animate-pulse" />
-                  <span className="text-[10px] font-bold text-secondary uppercase tracking-widest">Operational</span>
+                  <span className="text-[12px] font-bold text-secondary uppercase tracking-widest">Operational</span>
                 </div>
               </div>
               <div className="space-y-4">
@@ -189,7 +189,7 @@ const Help = () => {
                     />
                   ))}
                 </div>
-                <div className="flex justify-between text-[10px] text-on-surface-variant font-bold uppercase tracking-tighter">
+                <div className="flex justify-between text-[12px] text-on-surface-variant font-bold uppercase tracking-tighter">
                   <span>Latency: 14ms</span>
                   <span>Global Nodes: 124</span>
                 </div>
@@ -295,7 +295,7 @@ const Help = () => {
                   <>Contact our <strong className="text-on-surface">Emergency Response Team</strong> via the priority link below.</>,
                 ].map((step, i) => (
                   <div key={i} className="flex gap-4">
-                    <span className="h-6 w-6 rounded-full bg-error text-on-error text-[10px] font-bold flex items-center justify-center flex-shrink-0">
+                    <span className="h-6 w-6 rounded-full bg-error text-on-error text-[12px] font-bold flex items-center justify-center flex-shrink-0">
                       {String(i + 1).padStart(2, "0")}
                     </span>
                     <p className="text-sm">{step}</p>
@@ -314,7 +314,7 @@ const Help = () => {
                   <>Trigger <strong className="text-on-surface">Dark Web Monitor</strong> for immediate leaked credential scan.</>,
                 ].map((step, i) => (
                   <div key={i} className="flex gap-4">
-                    <span className="h-6 w-6 rounded-full bg-error text-on-error text-[10px] font-bold flex items-center justify-center flex-shrink-0">
+                    <span className="h-6 w-6 rounded-full bg-error text-on-error text-[12px] font-bold flex items-center justify-center flex-shrink-0">
                       {String(i + 1).padStart(2, "0")}
                     </span>
                     <p className="text-sm">{step}</p>

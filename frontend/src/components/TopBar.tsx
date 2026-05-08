@@ -27,10 +27,10 @@ const TopBar = ({ systemStatus }: TopBarProps) => {
 
   const isLanding = location.pathname === "/";
 
-  const navItems = isLanding 
+  const navItems = isLanding
     ? [
-        { path: "#features", label: t("common.platform"), icon: "dashboard" },
         { path: "/about", label: t("common.about"), icon: "info" },
+        { path: "/donate", label: t("common.donate"), icon: "favorite" },
       ]
     : [
         { path: "/call-protection", label: t("common.callProtection"), icon: "shield", highlight: true },
@@ -38,6 +38,7 @@ const TopBar = ({ systemStatus }: TopBarProps) => {
         { path: "/history", label: t("common.history"), icon: "history" },
         { path: "/help", label: t("common.help"), icon: "help_outline" },
         { path: "/contact", label: t("common.contact"), icon: "mail" },
+        { path: "/donate", label: t("common.donate"), icon: "favorite" },
       ];
 
   return (
@@ -68,7 +69,7 @@ const TopBar = ({ systemStatus }: TopBarProps) => {
                 <Link
                   key={item.path}
                   to={item.path}
-                  className={`relative group font-headline text-[13px] tracking-[0.15em] uppercase transition-all duration-300 flex items-center gap-2 py-2 ${
+                  className={`relative group font-headline text-[15px] tracking-[0.15em] uppercase transition-all duration-300 flex items-center gap-2 py-2 ${
                     isActive
                       ? "text-primary font-extrabold"
                       : "text-on-surface-variant font-bold hover:text-primary-container"
@@ -113,13 +114,13 @@ const TopBar = ({ systemStatus }: TopBarProps) => {
               <div className="flex items-center gap-6">
                 <Link
                   to="/login"
-                  className="text-on-surface-variant hover:text-primary font-headline tracking-widest font-bold text-[12px] uppercase transition-colors active:scale-95"
+                  className="text-on-surface-variant hover:text-primary font-headline tracking-widest font-bold text-[14px] uppercase transition-colors active:scale-95"
                 >
                   {t("common.login")}
                 </Link>
                 <Link
                   to="/register"
-                  className="px-7 py-2.5 bg-gradient-to-r from-[#00d1ff] to-[#00d1ff]/80 text-[#070d1f] font-headline font-black text-[12px] uppercase tracking-widest rounded-full shadow-[0_0_25px_rgba(0,209,255,0.4)] hover:shadow-[0_0_40px_rgba(0,209,255,0.6)] transition-all active:scale-95 hover:scale-[1.05]"
+                  className="px-7 py-2.5 bg-gradient-to-r from-[#00d1ff] to-[#00d1ff]/80 text-[#070d1f] font-headline font-black text-[14px] uppercase tracking-widest rounded-full shadow-[0_0_25px_rgba(0,209,255,0.4)] hover:shadow-[0_0_40px_rgba(0,209,255,0.6)] transition-all active:scale-95 hover:scale-[1.05]"
                 >
                   {t("common.signUp")}
                 </Link>
@@ -129,13 +130,13 @@ const TopBar = ({ systemStatus }: TopBarProps) => {
               <div className="flex items-center gap-8">
                 <Link
                   to="/login"
-                  className="text-on-surface-variant hover:text-primary font-headline tracking-widest font-bold text-[12px] uppercase transition-colors active:scale-95"
+                  className="text-on-surface-variant hover:text-primary font-headline tracking-widest font-bold text-[14px] uppercase transition-colors active:scale-95"
                 >
                   {t("common.login")}
                 </Link>
                 <Link
                   to="/call-protection"
-                  className="px-6 py-2.5 bg-gradient-to-r from-primary to-secondary text-surface font-headline font-black text-[12px] uppercase tracking-widest rounded-full shadow-[0_0_20px_rgba(0,209,255,0.2)] hover:shadow-[0_0_30px_rgba(0,209,255,0.4)] transition-all active:scale-95 hover:scale-[1.05]"
+                  className="px-6 py-2.5 bg-gradient-to-r from-primary to-secondary text-surface font-headline font-black text-[14px] uppercase tracking-widest rounded-full shadow-[0_0_20px_rgba(0,209,255,0.2)] hover:shadow-[0_0_30px_rgba(0,209,255,0.4)] transition-all active:scale-95 hover:scale-[1.05]"
                 >
                   {t("common.getProtected")} →
                 </Link>

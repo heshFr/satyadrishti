@@ -320,7 +320,7 @@ const Advanced = () => {
           <div className="col-span-12 md:col-span-4 xl:col-span-3">
             <div className={`relative p-6 rounded-2xl bg-surface-container-low border border-outline-variant/10 flex flex-col items-center gap-4 overflow-hidden`}>
               <div className={`absolute inset-0 opacity-10 ${tc.bg}`} style={{ filter: "blur(60px)" }} />
-              <p className="text-[10px] font-bold text-outline uppercase tracking-widest z-10">Threat Assessment</p>
+              <p className="text-[12px] font-bold text-outline uppercase tracking-widest z-10">Threat Assessment</p>
               <div className="relative w-32 h-32 z-10">
                 <svg className="w-full h-full -rotate-90" viewBox="0 0 120 120">
                   <circle cx="60" cy="60" r="54" fill="none" stroke="currentColor" strokeWidth="6" className="text-surface-container-high" />
@@ -340,7 +340,7 @@ const Advanced = () => {
           {/* Conversation Stage Indicator */}
           <div className="col-span-12 md:col-span-8 xl:col-span-5">
             <div className="p-6 rounded-2xl bg-surface-container-low border border-outline-variant/10 h-full">
-              <p className="text-[10px] font-bold text-outline uppercase tracking-widest mb-4">Conversation Stage</p>
+              <p className="text-[12px] font-bold text-outline uppercase tracking-widest mb-4">Conversation Stage</p>
               <div className="flex items-center gap-3 mb-4">
                 {(["approach", "hook", "pressure", "extraction"] as ConversationStage[]).map((s, i) => {
                   const cfg = STAGE_CONFIG[s];
@@ -354,7 +354,7 @@ const Advanced = () => {
                       }`}>
                         <MaterialIcon icon={cfg.icon} size={20} className={isActive || isPast ? cfg.color : "text-outline"} />
                       </div>
-                      <span className={`text-[9px] font-black uppercase tracking-widest ${isActive ? cfg.color : "text-outline"}`}>{cfg.label}</span>
+                      <span className={`text-[11px] font-black uppercase tracking-widest ${isActive ? cfg.color : "text-outline"}`}>{cfg.label}</span>
                     </div>
                   );
                 })}
@@ -376,7 +376,7 @@ const Advanced = () => {
           {/* Quick Actions Panel */}
           <div className="col-span-12 xl:col-span-4">
             <div className="p-6 rounded-2xl bg-surface-container-low border border-outline-variant/10 h-full flex flex-col gap-4">
-              <p className="text-[10px] font-bold text-outline uppercase tracking-widest">Quick Actions</p>
+              <p className="text-[12px] font-bold text-outline uppercase tracking-widest">Quick Actions</p>
 
               {/* End Call Button */}
               <AnimatePresence>
@@ -429,7 +429,7 @@ const Advanced = () => {
                 <MaterialIcon icon="graphic_eq" size={18} className="text-primary" />
                 <h3 className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Audio Frequency Spectrum</h3>
               </div>
-              <div className="flex gap-3 text-[10px] font-mono">
+              <div className="flex gap-3 text-[12px] font-mono">
                 <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-secondary" />Low</span>
                 <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#06B6D4]" />Mid</span>
                 <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-error" />High</span>
@@ -455,7 +455,7 @@ const Advanced = () => {
                 <MaterialIcon icon="psychology" size={18} className="text-primary" />
                 <h3 className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Sentiment Timeline</h3>
               </div>
-              <div className="flex gap-3 text-[10px] font-mono">
+              <div className="flex gap-3 text-[12px] font-mono">
                 <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-error" />Fear</span>
                 <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500" />Urgency</span>
                 <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-secondary" />Trust</span>
@@ -501,7 +501,7 @@ const Advanced = () => {
                       <MaterialIcon icon={item.icon} size={16} className={item.color !== "text-on-surface-variant" ? item.color : "text-outline"} />
                       <span className="text-sm font-headline font-bold text-on-surface">{item.label}</span>
                     </div>
-                    <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border ${
+                    <span className={`text-[12px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border ${
                       item.color === "text-error" ? "border-error/20 bg-error/10 text-error" :
                       item.color === "text-primary" ? "border-primary/20 bg-primary/10 text-primary" :
                       item.color === "text-secondary" ? "border-secondary/20 bg-secondary/10 text-secondary" :
@@ -532,7 +532,7 @@ const Advanced = () => {
                 <MaterialIcon icon="terminal" size={18} className="text-primary" />
                 <h3 className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Live Event Log</h3>
               </div>
-              <span className="text-[10px] font-mono text-outline">{transcript.length} events</span>
+              <span className="text-[12px] font-mono text-outline">{transcript.length} events</span>
             </div>
             <div className="space-y-2 max-h-[320px] overflow-y-auto pr-2 scrollbar-thin">
               {transcript.length === 0 ? (
@@ -547,7 +547,7 @@ const Advanced = () => {
                   }`}>
                     <span className="text-on-surface-variant font-mono text-xs shrink-0 mt-0.5">{line.time}</span>
                     {line.stage && (
-                      <span className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0 mt-0.5 ${
+                      <span className={`text-[11px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0 mt-0.5 ${
                         line.stage === "extraction" ? "bg-error/10 text-error" :
                         line.stage === "pressure" ? "bg-amber-500/10 text-amber-500" :
                         line.stage === "audio" ? "bg-primary/10 text-primary" :

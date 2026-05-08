@@ -445,7 +445,7 @@ const Scanner = () => {
                             </p>
                             <div className="flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full border border-primary/20">
                               <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                              <span className="text-[10px] text-primary uppercase tracking-[0.2em] font-black">
+                              <span className="text-[12px] text-primary uppercase tracking-[0.2em] font-black">
                                 Multi-layer forensic processing enabled
                               </span>
                             </div>
@@ -527,7 +527,7 @@ const Scanner = () => {
                               <MaterialIcon icon={step.icon} size={20} className={active ? "text-on-primary-container animate-pulse" : "text-on-surface-variant"} />}
                           </div>
                           <span className="font-headline text-sm font-bold text-on-surface">{step.label}</span>
-                          <span className={`text-[10px] font-label uppercase tracking-widest mt-1 font-black ${done ? "text-secondary" : active ? "text-primary animate-pulse" : "text-on-surface-variant"}`}>
+                          <span className={`text-[12px] font-label uppercase tracking-widest mt-1 font-black ${done ? "text-secondary" : active ? "text-primary animate-pulse" : "text-on-surface-variant"}`}>
                             {done ? "Verified" : active ? "Analyzing..." : "Buffered"}
                           </span>
                         </div>
@@ -558,11 +558,11 @@ const Scanner = () => {
                   {(verdict === "ai-generated" && confidence < 75) || anomalies.length >= 2 ? (
                     <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-error/10 border border-error/30">
                       <MaterialIcon icon="gavel" size={14} className="text-error" />
-                      <span className="text-[10px] font-black text-error uppercase tracking-[0.1em]">Forensic Rule Override Active</span>
+                      <span className="text-[12px] font-black text-error uppercase tracking-[0.1em]">Forensic Rule Override Active</span>
                     </div>
                   ) : null}
 
-                  <span className={`text-[10px] px-3 py-1 rounded-full border font-black uppercase tracking-widest ${
+                  <span className={`text-[12px] px-3 py-1 rounded-full border font-black uppercase tracking-widest ${
                     result?.status_text === "Partially Consistent" ? "bg-primary/10 text-primary border-primary/20" :
                     verdict === "ai-generated" ? "bg-error/10 text-error border-error/20" :
                     verdict === "authentic" ? "bg-secondary/10 text-secondary border-secondary/20" :
@@ -582,11 +582,11 @@ const Scanner = () => {
               </div>
               <div className="flex gap-8 shrink-0">
                 <div className="text-right">
-                  <p className="text-[10px] text-outline uppercase tracking-widest mb-1">Processing Time</p>
+                  <p className="text-[12px] text-outline uppercase tracking-widest mb-1">Processing Time</p>
                   <p className="text-2xl font-headline font-bold text-on-surface">{elapsed.toFixed(2)}s</p>
                 </div>
                 <div className="text-right border-l border-outline-variant/30 pl-8">
-                  <p className="text-[10px] text-outline uppercase tracking-widest mb-1">Threat Level</p>
+                  <p className="text-[12px] text-outline uppercase tracking-widest mb-1">Threat Level</p>
                   <p className={`text-2xl font-headline font-extrabold ${vc.color}`}>{vc.threat}</p>
                 </div>
               </div>
@@ -615,7 +615,7 @@ const Scanner = () => {
                     <span className="absolute text-lg font-extrabold font-headline">{Math.round(confidence)}%</span>
                   </div>
                   <div>
-                    <p className="text-[10px] text-outline uppercase tracking-widest mb-1">Authenticity Verdict</p>
+                    <p className="text-[12px] text-outline uppercase tracking-widest mb-1">Authenticity Verdict</p>
                     <h2 className={`text-2xl sm:text-4xl md:text-5xl font-headline font-extrabold tracking-tight ${vc.color}`}>{vc.label}</h2>
                     <div className="flex items-center gap-3 mt-3">
                       <div className="flex gap-1">
@@ -631,13 +631,13 @@ const Scanner = () => {
                 {/* Right: Quick stats */}
                 <div className="flex flex-wrap gap-3 md:gap-6">
                   <div className="bg-surface-container-lowest/60 backdrop-blur-sm px-4 md:px-6 py-3 md:py-4 rounded-xl border border-outline-variant/10 text-center min-w-[100px] flex-1 md:flex-none">
-                    <p className="text-[10px] text-outline uppercase tracking-widest mb-1">Neural Noise</p>
+                    <p className="text-[12px] text-outline uppercase tracking-widest mb-1">Neural Noise</p>
                     <p className={`text-xl font-headline font-bold ${verdict === "ai-generated" ? "text-error" : "text-on-surface"}`}>
                       {verdict === "ai-generated" ? "Elevated" : "Negligible"}
                     </p>
                   </div>
                   <div className="bg-surface-container-lowest/60 backdrop-blur-sm px-4 md:px-6 py-3 md:py-4 rounded-xl border border-outline-variant/10 text-center min-w-[100px] flex-1 md:flex-none">
-                    <p className="text-[10px] text-outline uppercase tracking-widest mb-1">Artifacts</p>
+                    <p className="text-[12px] text-outline uppercase tracking-widest mb-1">Artifacts</p>
                     <p className={`text-xl font-headline font-bold ${anomalies.filter(a => a.status === "fail").length > 0 ? "text-error" : "text-on-surface"}`}>
                       {anomalies.filter(a => a.status === "fail").length > 0
                         ? `${anomalies.filter(a => a.status === "fail").length} Found`
@@ -645,7 +645,7 @@ const Scanner = () => {
                     </p>
                   </div>
                   <div className="bg-surface-container-lowest/60 backdrop-blur-sm px-4 md:px-6 py-3 md:py-4 rounded-xl border border-outline-variant/10 text-center min-w-[100px] flex-1 md:flex-none">
-                    <p className="text-[10px] text-outline uppercase tracking-widest mb-1">Layers</p>
+                    <p className="text-[12px] text-outline uppercase tracking-widest mb-1">Layers</p>
                     <p className="text-xl font-headline font-bold text-on-surface">{checks.length}</p>
                   </div>
                 </div>
@@ -711,11 +711,11 @@ const Scanner = () => {
               <div className="col-span-12 lg:col-span-8 relative rounded-2xl overflow-hidden bg-surface-container-low/70 backdrop-blur-xl border border-outline-variant/15 group/preview">
                 {/* Overlay badges */}
                 <div className="absolute top-4 left-4 z-10 flex gap-2">
-                  <span className="px-3 py-1 rounded-full bg-background/60 backdrop-blur-md text-[10px] font-bold text-primary flex items-center gap-2">
+                  <span className="px-3 py-1 rounded-full bg-background/60 backdrop-blur-md text-[12px] font-bold text-primary flex items-center gap-2">
                     <span className="w-1.5 h-1.5 rounded-full bg-primary" /> ORIGINAL
                   </span>
                   {verdict === "ai-generated" && (
-                    <span className="px-3 py-1 rounded-full bg-error-container/60 backdrop-blur-md text-[10px] font-bold text-on-error-container flex items-center gap-2">
+                    <span className="px-3 py-1 rounded-full bg-error-container/60 backdrop-blur-md text-[12px] font-bold text-on-error-container flex items-center gap-2">
                       ANOMALY DETECTED
                     </span>
                   )}
@@ -763,7 +763,7 @@ const Scanner = () => {
                   </div>
                   {checks[0] && (
                     <div className="mt-6 p-4 rounded-xl bg-surface-container-lowest/60 border border-outline-variant/5 relative z-10">
-                      <p className="text-[11px] text-on-surface-variant leading-relaxed italic">
+                      <p className="text-[13px] text-on-surface-variant leading-relaxed italic">
                         &ldquo;{checks[0].description || checks[0].detail || "Analysis complete."}&rdquo;
                       </p>
                     </div>
@@ -780,7 +780,7 @@ const Scanner = () => {
                     <p className="text-on-surface font-semibold text-base mb-2">{anomalies[0].name || anomalies[0].label}</p>
                     <p className="text-xs text-on-surface-variant leading-relaxed mb-3">{anomalies[0].description || anomalies[0].detail}</p>
                     {anomalies.length > 1 && (
-                      <span className="text-[10px] font-bold text-error">+{anomalies.length - 1} more anomalies detected</span>
+                      <span className="text-[12px] font-bold text-error">+{anomalies.length - 1} more anomalies detected</span>
                     )}
                   </div>
                 ) : (
@@ -812,7 +812,7 @@ const Scanner = () => {
                       <MaterialIcon icon="check" filled size={16} className="text-on-secondary" />
                     </div>
                     <span className="font-headline text-sm font-bold text-on-surface">{step.label}</span>
-                    <span className="text-[10px] font-label uppercase tracking-tighter mt-1 text-on-surface-variant">Completed</span>
+                    <span className="text-[12px] font-label uppercase tracking-tighter mt-1 text-on-surface-variant">Completed</span>
                   </div>
                 ))}
               </div>
@@ -852,7 +852,7 @@ const Scanner = () => {
                             <MaterialIcon icon={icon} size={28} className={`${statusColor} group-hover/card:scale-110 transition-transform`} />
                             <MaterialIcon icon={isExpanded ? "expand_less" : "expand_more"} size={18} className="text-outline/50" />
                           </div>
-                          <span className={`text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full border ${statusBg}`}>
+                          <span className={`text-[12px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full border ${statusBg}`}>
                             {c.status === "pass" ? "CLEAN" : c.status === "fail" ? "ALERT" : c.status === "warn" ? "WARNING" : "INFO"}
                           </span>
                         </div>
@@ -880,11 +880,11 @@ const Scanner = () => {
                             )}
                             {rawDetail && typeof rawDetail === "object" && (
                               <div className="rounded-xl bg-surface-container-lowest/80 border border-outline-variant/5 overflow-hidden">
-                                <p className="text-[10px] font-bold text-outline uppercase tracking-widest px-4 py-3 bg-surface-container-high/50">Raw Engine Output</p>
+                                <p className="text-[12px] font-bold text-outline uppercase tracking-widest px-4 py-3 bg-surface-container-high/50">Raw Engine Output</p>
                                 <div className="p-4 grid grid-cols-2 md:grid-cols-3 gap-3">
                                   {Object.entries(rawDetail).filter(([, v]) => v !== null && v !== undefined && typeof v !== "object").map(([k, v]) => (
                                     <div key={k} className="flex flex-col gap-0.5">
-                                      <span className="text-[10px] text-outline font-mono uppercase tracking-wider">{k.replace(/_/g, " ")}</span>
+                                      <span className="text-[12px] text-outline font-mono uppercase tracking-wider">{k.replace(/_/g, " ")}</span>
                                       <span className="text-sm font-mono text-on-surface font-bold">{typeof v === "number" ? (v as number).toFixed(4) : String(v)}</span>
                                     </div>
                                   ))}
@@ -963,10 +963,10 @@ const Scanner = () => {
                       <div className={`absolute inset-0 mix-blend-overlay ${
                         verdict === "ai-generated" ? "bg-gradient-to-tr from-error/40 via-error/10 to-transparent" : "bg-gradient-to-tr from-secondary/20 via-secondary/5 to-transparent"
                       }`} />
-                      <div className="absolute bottom-3 right-3 bg-background/80 backdrop-blur-md px-3 py-1.5 rounded-lg text-[10px] font-mono text-primary flex items-center gap-2">
+                      <div className="absolute bottom-3 right-3 bg-background/80 backdrop-blur-md px-3 py-1.5 rounded-lg text-[12px] font-mono text-primary flex items-center gap-2">
                         <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" /> OVERLAY ACTIVE
                       </div>
-                      <div className="absolute top-3 left-3 bg-background/80 backdrop-blur-md px-3 py-1.5 rounded-lg text-[10px] font-mono text-on-surface-variant">
+                      <div className="absolute top-3 left-3 bg-background/80 backdrop-blur-md px-3 py-1.5 rounded-lg text-[12px] font-mono text-on-surface-variant">
                         SPECTRAL ANALYSIS VIEW
                       </div>
                     </div>
@@ -995,7 +995,7 @@ const Scanner = () => {
                           ...(raw.preprocessing?.method ? [{ label: "PREPROCESSING", value: raw.preprocessing.method, color: "text-on-surface-variant" }] : []),
                         ].map((row, i) => (
                           <tr key={i} className="hover:bg-surface-container-high/40 transition-colors">
-                            <td className="px-6 py-4 font-mono text-[11px] text-outline uppercase tracking-widest w-40">{row.label}</td>
+                            <td className="px-6 py-4 font-mono text-[13px] text-outline uppercase tracking-widest w-40">{row.label}</td>
                             <td className={`px-6 py-4 font-mono text-sm ${row.color} break-all`}>{row.value}</td>
                           </tr>
                         ))}
@@ -1025,10 +1025,10 @@ const Scanner = () => {
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-surface-container-lowest">
-                        <th className="px-8 py-4 font-label text-[10px] uppercase tracking-widest text-on-surface-variant w-32">Timestamp</th>
-                        <th className="px-8 py-4 font-label text-[10px] uppercase tracking-widest text-on-surface-variant">Technical Layer</th>
-                        <th className="px-8 py-4 font-label text-[10px] uppercase tracking-widest text-on-surface-variant">Detail</th>
-                        <th className="px-8 py-4 font-label text-[10px] uppercase tracking-widest text-on-surface-variant w-28 text-right">Status</th>
+                        <th className="px-8 py-4 font-label text-[12px] uppercase tracking-widest text-on-surface-variant w-32">Timestamp</th>
+                        <th className="px-8 py-4 font-label text-[12px] uppercase tracking-widest text-on-surface-variant">Technical Layer</th>
+                        <th className="px-8 py-4 font-label text-[12px] uppercase tracking-widest text-on-surface-variant">Detail</th>
+                        <th className="px-8 py-4 font-label text-[12px] uppercase tracking-widest text-on-surface-variant w-28 text-right">Status</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-outline-variant/5">

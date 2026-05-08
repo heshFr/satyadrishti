@@ -28,6 +28,12 @@ const Footer = () => {
           >
             {t("common.contact")}
           </Link>
+          <Link
+            to="/donate"
+            className="text-primary-container/80 hover:text-primary-container transition-colors font-body text-xs tracking-widest uppercase font-semibold"
+          >
+            {t("common.donate")}
+          </Link>
           <a
             href="https://cybercrime.gov.in"
             target="_blank"

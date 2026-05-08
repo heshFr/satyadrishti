@@ -26,6 +26,7 @@ const Terms = lazy(() => import("./pages/Terms"));
 const SecurityProtocol = lazy(() => import("./pages/SecurityProtocol"));
 const About = lazy(() => import("./pages/About"));
 const LiveDemo = lazy(() => import("./pages/LiveDemo"));
+const Donate = lazy(() => import("./pages/Donate"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -46,26 +47,36 @@ function useThemeSync() {
   );
   const fontSize = useSyncExternalStore(
     (cb) => { window.addEventListener("storage", cb); return () => window.removeEventListener("storage", cb); },
-    () => { try { return JSON.parse(localStorage.getItem("satya-font-size") || "14"); } catch { return 14; } },
+    () => { try { return JSON.parse(localStorage.getItem("satya-font-size") || "16"); } catch { return 16; } },
   );
 
   useEffect(() => {
     const root = document.documentElement;
-    if (theme === "light") {
-      root.classList.remove("dark");
-      root.classList.add("light");
-    } else if (theme === "system") {
-      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-      root.classList.toggle("dark", prefersDark);
-      root.classList.toggle("light", !prefersDark);
-    } else {
-      root.classList.add("dark");
-      root.classList.remove("light");
+    const apply = () => {
+      if (theme === "light") {
+        root.classList.remove("dark");
+        root.classList.add("light");
+      } else if (theme === "system") {
+        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        root.classList.toggle("dark", prefersDark);
+        root.classList.toggle("light", !prefersDark);
+      } else {
+        root.classList.add("dark");
+        root.classList.remove("light");
+      }
+    };
+    apply();
+
+    // Live-react to OS theme changes only when in system mode
+    if (theme === "system") {
+      const mq = window.matchMedia("(prefers-color-scheme: dark)");
+      mq.addEventListener("change", apply);
+      return () => mq.removeEventListener("change", apply);
     }
   }, [theme]);
 
   useEffect(() => {
-    if (fontSize >= 12 && fontSize <= 20) {
+    if (fontSize >= 14 && fontSize <= 22) {
       document.documentElement.style.fontSize = `${fontSize}px`;
     }
     return () => { document.documentElement.style.fontSize = ""; };
@@ -103,6 +114,7 @@ function App() {
               <Route path="/security" element={<SecurityProtocol />} />
               <Route path="/about" element={<About />} />
               <Route path="/live-demo" element={<LiveDemo />} />
+              <Route path="/donate" element={<Donate />} />
 
               {/* Partially Public / Auth-required routes */}
               <Route

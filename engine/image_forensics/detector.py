@@ -132,6 +132,48 @@ DEFAULT_PRETRAINED_DIR = os.path.join("models", "image_forensics", "pretrained_v
 VIDEO_SAMPLE_FRAMES = 16
 
 
+def _to_jsonable(obj):
+    """
+    Recursively convert numpy scalars/arrays to native Python types so the
+    forensics result is safely serializable by FastAPI's jsonable_encoder.
+
+    With ~20 forensic modules each producing nested dicts, it is not feasible
+    to fix every individual `result["x"] = some_numpy_op(...)` call site --
+    new modules will keep introducing the bug. This boundary sanitizer
+    catches all numpy types in one place. NaN/Inf are coerced to None so the
+    JSON output is valid (FastAPI's encoder rejects non-finite floats).
+    """
+    if obj is None:
+        return None
+    if isinstance(obj, (str, bool, int)):
+        return obj
+    if isinstance(obj, float):
+        if obj != obj or obj == float("inf") or obj == float("-inf"):  # NaN/Inf
+            return None
+        return obj
+    if isinstance(obj, np.bool_):
+        return bool(obj)
+    if isinstance(obj, np.integer):
+        return int(obj)
+    if isinstance(obj, np.floating):
+        f = float(obj)
+        if f != f or f == float("inf") or f == float("-inf"):
+            return None
+        return f
+    if isinstance(obj, np.ndarray):
+        return [_to_jsonable(x) for x in obj.tolist()]
+    if isinstance(obj, dict):
+        return {str(k): _to_jsonable(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple, set)):
+        return [_to_jsonable(x) for x in obj]
+    # Fallback: anything else (e.g. custom object) -> string repr.
+    # Better than crashing the entire request.
+    try:
+        return str(obj)
+    except Exception:
+        return None
+
+
 class ImageForensicsDetector:
     def __init__(self, model_path: str = None, pretrained_dir: str = None, device: str = None):
         """
@@ -308,7 +350,7 @@ class ImageForensicsDetector:
 
                 if content_info["is_artistic"]:
                     # Artistic content — skip photo-specific deepfake checks entirely
-                    return {
+                    return _to_jsonable({
                         "verdict": "artistic-content",
                         "confidence": round(conf * 100, 1),
                         "content_type": ctype,
@@ -330,7 +372,7 @@ class ImageForensicsDetector:
                             "photo_score": content_info["photo_score"],
                             "artistic_margin": content_info["artistic_margin"],
                         },
-                    }
+                    })
             except Exception as e:
                 print(f"[Forensics] Content classification failed: {e}")
 
@@ -906,7 +948,10 @@ class ImageForensicsDetector:
                 "description": "Running without neural model -- results based on statistical heuristics only.",
             })
 
-        return report
+        # Sanitize numpy types before returning -- FastAPI's jsonable_encoder
+        # cannot handle np.bool_ / np.integer / np.floating / np.ndarray that
+        # leak in from the ~20 forensic submodules.
+        return _to_jsonable(report)
 
     def _verdict_non_photo(
         self,
@@ -1318,7 +1363,7 @@ class ImageForensicsDetector:
         cap.release()
 
         if not freq_scores and not sampled_frames:
-            return {
+            return _to_jsonable({
                 "verdict": "inconclusive",
                 "confidence": 0.0,
                 "forensic_checks": [{
@@ -1328,7 +1373,7 @@ class ImageForensicsDetector:
                     "description": "Could not extract any valid frames from video.",
                 }],
                 "raw_scores": {},
-            }
+            })
 
         # ── Content type classification on video frames ──
         if self.content_classifier and sampled_frames:
@@ -1337,7 +1382,7 @@ class ImageForensicsDetector:
                     sampled_frames, sample_count=5
                 )
                 if video_content["is_artistic"] and video_content["consensus_strength"] >= 0.6:
-                    return {
+                    return _to_jsonable({
                         "verdict": "artistic-content",
                         "confidence": round(video_content["confidence"] * 100, 1),
                         "content_type": video_content["content_type"],
@@ -1357,7 +1402,7 @@ class ImageForensicsDetector:
                             "frame_votes": video_content["frame_votes"],
                             "consensus_strength": video_content["consensus_strength"],
                         },
-                    }
+                    })
             except Exception as e:
                 print(f"[Forensics] Video content classification failed: {e}")
 
@@ -1569,4 +1614,5 @@ class ImageForensicsDetector:
                 "description": "Running without neural model -- video analysis based on statistical heuristics only (limited accuracy).",
             })
 
-        return report
+        # Sanitize numpy types before returning -- see analyze() for rationale.
+        return _to_jsonable(report)

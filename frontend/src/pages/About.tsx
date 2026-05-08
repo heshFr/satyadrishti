@@ -16,7 +16,7 @@ const About = () => {
           transition={{ duration: 0.8 }}
           className="space-y-8"
         >
-          <span className="inline-block px-4 py-1.5 bg-primary/10 border border-primary/20 rounded-full text-primary font-mono text-[10px] font-black uppercase tracking-[0.3em]">
+          <span className="inline-block px-4 py-1.5 bg-primary/10 border border-primary/20 rounded-full text-primary font-mono text-[12px] font-black uppercase tracking-[0.3em]">
             Institutional Forensics
           </span>
           <h1 className="text-6xl md:text-8xl font-black font-headline tracking-tighter leading-[0.85] uppercase">
@@ -83,7 +83,7 @@ const About = () => {
         </div>
       </section>
 
-      <footer className="py-20 text-center text-outline text-[10px] font-mono uppercase tracking-[0.5em] opacity-30">
+      <footer className="py-20 text-center text-outline text-[12px] font-mono uppercase tracking-[0.5em] opacity-30">
         Satya Drishti • Defending Humanity in the Age of AI
       </footer>
     </div>

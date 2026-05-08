@@ -257,7 +257,7 @@ const VoiceEnroll = () => {
               <div className="absolute -top-24 -right-24 w-64 h-64 bg-primary-container/10 rounded-full blur-[100px]"></div>
               
               <div className="relative z-10 flex flex-col h-full">
-                <h3 className="text-on-surface-variant font-headline uppercase tracking-widest text-[10px] font-bold mb-6">New Enrollment</h3>
+                <h3 className="text-on-surface-variant font-headline uppercase tracking-widest text-[12px] font-bold mb-6">New Enrollment</h3>
                 <h2 className="text-3xl font-headline font-bold text-on-surface mb-8">Register Identity</h2>
                 
                 <div className="space-y-4 flex-1">
@@ -304,7 +304,7 @@ const VoiceEnroll = () => {
                   {isRecording && (
                     <div className="absolute top-4 left-4 flex items-center gap-2">
                       <div className="w-2 h-2 rounded-full bg-error animate-pulse"></div>
-                      <span className="text-[10px] font-mono text-error font-bold">{Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}</span>
+                      <span className="text-[12px] font-mono text-error font-bold">{Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}</span>
                     </div>
                   )}
 
@@ -329,7 +329,7 @@ const VoiceEnroll = () => {
                 <button 
                   disabled={isRecording || loading || !name.trim()}
                   onClick={() => {/* Only decorative if start/stop via mic */}}
-                  className={`mt-6 py-4 rounded-xl transition-all uppercase tracking-widest text-[10px] font-bold border outline-none ${
+                  className={`mt-6 py-4 rounded-xl transition-all uppercase tracking-widest text-[12px] font-bold border outline-none ${
                     name.trim() && !isRecording && !loading
                       ? "bg-surface-container-high hover:bg-surface-container-highest text-primary border-outline-variant/10"
                       : "bg-surface-container-lowest text-outline border-outline-variant/5 opacity-50 cursor-not-allowed"
@@ -344,7 +344,7 @@ const VoiceEnroll = () => {
           {/* Family List Panel */}
           <section className="lg:col-span-7 space-y-8">
             <div className="flex items-center justify-between">
-              <h3 className="text-on-surface-variant font-headline uppercase tracking-widest text-[10px] font-bold">Enrolled Inner Circle</h3>
+              <h3 className="text-on-surface-variant font-headline uppercase tracking-widest text-[12px] font-bold">Enrolled Inner Circle</h3>
               <span className="text-on-surface-variant font-label text-sm italic">{prints.length} Active Profiles</span>
             </div>
             
@@ -376,17 +376,17 @@ const VoiceEnroll = () => {
                         <div>
                           <h4 className="text-lg md:text-xl font-headline font-bold text-on-surface">{p.name}</h4>
                           <div className="flex flex-col sm:flex-row sm:items-center space-y-1 sm:space-y-0 sm:space-x-3 mt-1">
-                            <span className="text-[10px] md:text-xs font-label uppercase tracking-widest text-on-surface-variant">
+                            <span className="text-[12px] md:text-xs font-label uppercase tracking-widest text-on-surface-variant">
                               {p.relationship !== "unknown" ? p.relationship : "Secure Identity"}
                             </span>
-                            <span className="w-max px-2 py-0.5 bg-secondary/10 text-secondary text-[9px] md:text-[10px] rounded-full font-bold uppercase tracking-tighter self-start sm:self-auto">Verified</span>
+                            <span className="w-max px-2 py-0.5 bg-secondary/10 text-secondary text-[11px] md:text-[12px] rounded-full font-bold uppercase tracking-tighter self-start sm:self-auto">Verified</span>
                           </div>
                         </div>
                       </div>
                       
                       <div className="flex items-center space-x-2 md:space-x-4">
                         <div className="text-right hidden sm:block mr-2">
-                          <p className="text-[9px] md:text-[10px] font-label uppercase tracking-widest text-outline">Duration</p>
+                          <p className="text-[11px] md:text-[12px] font-label uppercase tracking-widest text-outline">Duration</p>
                           <p className="text-xs md:text-sm font-semibold text-on-surface-variant">
                             {p.audio_duration ? `${p.audio_duration.toFixed(1)}s` : 'Unknown'}
                           </p>
@@ -410,29 +410,29 @@ const VoiceEnroll = () => {
         {/* Integrity Log Section (Bento style) */}
         <section className="space-y-6">
           <div className="flex items-center justify-between">
-            <h3 className="text-on-surface-variant font-headline uppercase tracking-widest text-[10px] font-bold">Integrity Monitoring</h3>
-            <button className="text-primary text-[10px] font-bold uppercase tracking-widest hover:underline transition-all cursor-pointer outline-none">Export Report</button>
+            <h3 className="text-on-surface-variant font-headline uppercase tracking-widest text-[12px] font-bold">Integrity Monitoring</h3>
+            <button className="text-primary text-[12px] font-bold uppercase tracking-widest hover:underline transition-all cursor-pointer outline-none">Export Report</button>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
             <div className="bg-surface-container-low p-6 rounded-2xl flex flex-col justify-between min-h-[140px] md:min-h-[160px] border border-outline-variant/10">
                <MaterialIcon icon="verified_user" className="text-primary mb-4" size={32} />
                <div>
                  <p className="text-2xl font-headline font-bold text-on-surface">100%</p>
-                 <p className="text-[10px] md:text-xs font-label uppercase tracking-widest text-on-surface-variant mt-1">Accuracy Score</p>
+                 <p className="text-[12px] md:text-xs font-label uppercase tracking-widest text-on-surface-variant mt-1">Accuracy Score</p>
                </div>
             </div>
             <div className="bg-surface-container-low p-6 rounded-2xl flex flex-col justify-between min-h-[140px] md:min-h-[160px] border border-outline-variant/10">
                <MaterialIcon icon="record_voice_over" className="text-secondary mb-4" size={32} />
                <div>
                  <p className="text-2xl font-headline font-bold text-on-surface">{prints.length}</p>
-                 <p className="text-[10px] md:text-xs font-label uppercase tracking-widest text-on-surface-variant mt-1">Active Profiles Managed</p>
+                 <p className="text-[12px] md:text-xs font-label uppercase tracking-widest text-on-surface-variant mt-1">Active Profiles Managed</p>
                </div>
             </div>
             <div className="bg-surface-container-low p-6 rounded-2xl flex flex-col justify-between min-h-[140px] md:min-h-[160px] border border-outline-variant/10 sm:col-span-2 md:col-span-1">
                <MaterialIcon icon="warning" className="text-error mb-4" size={32} />
                <div>
                  <p className="text-2xl font-headline font-bold text-on-surface">0</p>
-                 <p className="text-[10px] md:text-xs font-label uppercase tracking-widest text-on-surface-variant mt-1">Spoofing Attempts Blocked</p>
+                 <p className="text-[12px] md:text-xs font-label uppercase tracking-widest text-on-surface-variant mt-1">Spoofing Attempts Blocked</p>
                </div>
             </div>
           </div>

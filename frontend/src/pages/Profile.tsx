@@ -188,7 +188,7 @@ const Profile = () => {
                       <MaterialIcon icon={stat.icon} size={16} />
                     </div>
                     {!isLoading && typeof stat.value === "number" && stat.value > 0 && (
-                      <span className="text-[10px] font-mono text-on-surface-variant/40 uppercase">Active</span>
+                      <span className="text-[12px] font-mono text-on-surface-variant/40 uppercase">Active</span>
                     )}
                   </div>
                   <p className={`text-3xl font-headline font-bold ${stat.color} tabular-nums`}>

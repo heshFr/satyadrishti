@@ -81,7 +81,7 @@ const UnderlineInput = ({
   const [focused, setFocused] = useState(false);
   return (
     <div className="space-y-2">
-      <label className="block text-[10px] font-label uppercase tracking-[0.2em] text-on-surface-variant font-bold px-1">
+      <label className="block text-[12px] font-label uppercase tracking-[0.2em] text-on-surface-variant font-bold px-1">
         {label}
       </label>
       <div className="relative group">
@@ -170,7 +170,7 @@ const SystemStatusBadge = () => (
       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-secondary opacity-75" />
       <span className="relative inline-flex rounded-full h-2 w-2 bg-secondary shadow-[0_0_6px_rgba(78,222,163,0.6)]" />
     </span>
-    <span className="text-[10px] font-label uppercase tracking-[0.15em] text-on-surface-variant font-bold">
+    <span className="text-[12px] font-label uppercase tracking-[0.15em] text-on-surface-variant font-bold">
       All Systems Operational
     </span>
   </div>
@@ -233,10 +233,10 @@ const PasswordStrengthMeter = ({ password }: { password: string }) => {
         ))}
       </div>
       <div className="flex justify-between items-center">
-        <p className="text-[9px] font-label text-on-surface-variant uppercase tracking-wider">
+        <p className="text-[11px] font-label text-on-surface-variant uppercase tracking-wider">
           {labels[level]} passphrase
         </p>
-        <p className="text-[9px] font-mono text-outline">
+        <p className="text-[11px] font-mono text-outline">
           {password.length} chars
         </p>
       </div>
@@ -569,7 +569,7 @@ const Login = () => {
             {/* Eyebrow */}
             <div className="flex items-center gap-3">
               <div className="h-[1px] w-12 bg-gradient-to-r from-primary to-transparent" />
-              <span className="text-[10px] font-label uppercase tracking-[0.3em] text-primary font-bold">Sentinel Authentication</span>
+              <span className="text-[12px] font-label uppercase tracking-[0.3em] text-primary font-bold">Sentinel Authentication</span>
             </div>
 
             {/* Main Headline */}
@@ -595,7 +595,7 @@ const Login = () => {
                   className="flex items-center gap-2 px-4 py-2 bg-surface-container-high/40 rounded-full border border-outline-variant/10"
                 >
                   <MaterialIcon icon={pill.icon} size={14} className="text-primary" />
-                  <span className="text-[10px] font-label uppercase tracking-wider text-on-surface-variant font-bold">{pill.label}</span>
+                  <span className="text-[12px] font-label uppercase tracking-wider text-on-surface-variant font-bold">{pill.label}</span>
                 </div>
               ))}
             </div>
@@ -609,7 +609,7 @@ const Login = () => {
               ].map((stat) => (
                 <div key={stat.label} className="space-y-0.5">
                   <p className="text-sm font-headline font-extrabold text-primary tracking-tight">{stat.value}</p>
-                  <p className="text-[9px] font-label text-outline uppercase tracking-wider">{stat.label}</p>
+                  <p className="text-[11px] font-label text-outline uppercase tracking-wider">{stat.label}</p>
                 </div>
               ))}
             </div>
@@ -617,7 +617,7 @@ const Login = () => {
         </div>
 
         {/* Bottom — Technical Metadata */}
-        <div className="relative z-10 flex items-center justify-between text-[9px] font-mono text-outline uppercase tracking-wider">
+        <div className="relative z-10 flex items-center justify-between text-[11px] font-mono text-outline uppercase tracking-wider">
           <span>Session: {sessionId}</span>
           <span>{timeStr} UTC+5:30</span>
           <span>Encryption: AES-256-GCM</span>
@@ -698,7 +698,7 @@ const Login = () => {
                     key={tab}
                     type="button"
                     onClick={() => switchMode(tab)}
-                    className={`flex-1 py-2.5 text-[10px] font-label font-bold uppercase tracking-[0.2em] rounded-md transition-all duration-300 cursor-pointer ${
+                    className={`flex-1 py-2.5 text-[12px] font-label font-bold uppercase tracking-[0.2em] rounded-md transition-all duration-300 cursor-pointer ${
                       mode === tab
                         ? "bg-surface-container-highest text-on-surface shadow-sm"
                         : "text-on-surface-variant hover:text-on-surface"
@@ -763,14 +763,14 @@ const Login = () => {
                         onChange={(e) => setRememberDevice(e.target.checked)}
                         className="w-4 h-4 rounded border-outline-variant/30 bg-surface-container-high text-primary focus:ring-primary/30 cursor-pointer"
                       />
-                      <span className="text-[10px] font-label text-on-surface-variant group-hover:text-on-surface transition-colors uppercase tracking-wider">
+                      <span className="text-[12px] font-label text-on-surface-variant group-hover:text-on-surface transition-colors uppercase tracking-wider">
                         Trust this device
                       </span>
                     </label>
                     <button
                       type="button"
                       onClick={() => switchMode("forgot")}
-                      className="text-[10px] font-label text-primary hover:text-primary-container transition-colors cursor-pointer uppercase tracking-wider font-bold"
+                      className="text-[12px] font-label text-primary hover:text-primary-container transition-colors cursor-pointer uppercase tracking-wider font-bold"
                     >
                       Forgot Password?
                     </button>
@@ -812,7 +812,7 @@ const Login = () => {
                   {/* Divider */}
                   <div className="flex items-center gap-4 py-2">
                     <div className="flex-1 h-[1px] bg-outline-variant/15" />
-                    <span className="text-[9px] font-label uppercase tracking-[0.2em] text-outline">Or continue with</span>
+                    <span className="text-[11px] font-label uppercase tracking-[0.2em] text-outline">Or continue with</span>
                     <div className="flex-1 h-[1px] bg-outline-variant/15" />
                   </div>
 
@@ -941,7 +941,7 @@ const Login = () => {
                   {/* Divider */}
                   <div className="flex items-center gap-4 py-1">
                     <div className="flex-1 h-[1px] bg-outline-variant/15" />
-                    <span className="text-[9px] font-label uppercase tracking-[0.2em] text-outline">Or sign up with</span>
+                    <span className="text-[11px] font-label uppercase tracking-[0.2em] text-outline">Or sign up with</span>
                     <div className="flex-1 h-[1px] bg-outline-variant/15" />
                   </div>
 
@@ -989,7 +989,7 @@ const Login = () => {
                   <OtpInput value={otpValue} onChange={setOtpValue} autoFocus />
 
                   {/* Timer / Info */}
-                  <div className="flex items-center justify-center gap-2 text-[10px] text-on-surface-variant font-label uppercase tracking-wider">
+                  <div className="flex items-center justify-center gap-2 text-[12px] text-on-surface-variant font-label uppercase tracking-wider">
                     <MaterialIcon icon="schedule" size={12} className="text-outline" />
                     <span>Code refreshes every 30 seconds</span>
                   </div>
@@ -1041,7 +1041,7 @@ const Login = () => {
                   <div className="text-center">
                     <button
                       type="button"
-                      className="text-[10px] text-outline hover:text-on-surface-variant transition-colors cursor-pointer font-label uppercase tracking-wider"
+                      className="text-[12px] text-outline hover:text-on-surface-variant transition-colors cursor-pointer font-label uppercase tracking-wider"
                     >
                       Use a backup code instead
                     </button>
@@ -1139,12 +1139,12 @@ const Login = () => {
                     <div className="p-4 rounded-xl bg-secondary/10 border border-secondary/20 text-center space-y-2">
                       <div className="flex items-center justify-center gap-2">
                         <MaterialIcon icon="science" size={16} className="text-secondary" />
-                        <span className="text-[10px] font-label uppercase tracking-wider text-secondary font-bold">Dev Mode — Recovery Code</span>
+                        <span className="text-[12px] font-label uppercase tracking-wider text-secondary font-bold">Dev Mode — Recovery Code</span>
                       </div>
                       <p className="text-2xl font-headline font-extrabold tracking-[0.3em] text-secondary">
                         {devResetCode}
                       </p>
-                      <p className="text-[9px] text-on-surface-variant">
+                      <p className="text-[11px] text-on-surface-variant">
                         In production, this would be sent to <span className="font-bold">{resetEmail}</span> via email.
                       </p>
                     </div>
@@ -1159,7 +1159,7 @@ const Login = () => {
                   {/* OTP input reuse for the 6-digit code */}
                   <OtpInput value={resetCode} onChange={setResetCode} autoFocus />
 
-                  <div className="flex items-center justify-center gap-2 text-[10px] text-on-surface-variant font-label uppercase tracking-wider">
+                  <div className="flex items-center justify-center gap-2 text-[12px] text-on-surface-variant font-label uppercase tracking-wider">
                     <MaterialIcon icon="schedule" size={12} className="text-outline" />
                     <span>Code expires in 15 minutes</span>
                   </div>
@@ -1241,7 +1241,7 @@ const Login = () => {
                     <button
                       type="button"
                       onClick={() => setMode("forgot")}
-                      className="text-[10px] text-outline hover:text-on-surface-variant transition-colors cursor-pointer font-label uppercase tracking-wider"
+                      className="text-[12px] text-outline hover:text-on-surface-variant transition-colors cursor-pointer font-label uppercase tracking-wider"
                     >
                       Resend code
                     </button>
@@ -1249,7 +1249,7 @@ const Login = () => {
                     <button
                       type="button"
                       onClick={() => switchMode("login")}
-                      className="text-[10px] text-outline hover:text-on-surface-variant transition-colors cursor-pointer font-label uppercase tracking-wider"
+                      className="text-[12px] text-outline hover:text-on-surface-variant transition-colors cursor-pointer font-label uppercase tracking-wider"
                     >
                       Back to Sign In
                     </button>
@@ -1263,7 +1263,7 @@ const Login = () => {
               <div className="mt-6 text-center">
                 <Link
                   to="/hub"
-                  className="text-[10px] text-outline hover:text-primary transition-colors cursor-pointer font-label uppercase tracking-[0.2em]"
+                  className="text-[12px] text-outline hover:text-primary transition-colors cursor-pointer font-label uppercase tracking-[0.2em]"
                 >
                   Continue without account →
                 </Link>
@@ -1281,7 +1281,7 @@ const Login = () => {
               <Link
                 key={label}
                 to={path}
-                className="text-[9px] font-label uppercase tracking-[0.15em] text-outline hover:text-on-surface-variant transition-colors cursor-pointer"
+                className="text-[11px] font-label uppercase tracking-[0.15em] text-outline hover:text-on-surface-variant transition-colors cursor-pointer"
               >
                 {label}
               </Link>

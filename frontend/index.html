@@ -36,8 +36,10 @@
             root.classList.toggle('light', !prefersDark);
           }
           // else keep 'dark' class from HTML
-          if (fontSize && fontSize >= 12 && fontSize <= 20) {
+          if (fontSize && fontSize >= 14 && fontSize <= 22) {
             root.style.fontSize = fontSize + 'px';
+          } else {
+            root.style.fontSize = '16px';
           }
         } catch(e) {}
       })();

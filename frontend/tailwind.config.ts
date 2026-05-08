@@ -7,23 +7,24 @@ const config: Config = {
     extend: {
       colors: {
         // Sentinel Design System — "The Digital Curator"
+        // Structural colors are CSS-variable-driven so they flip with .dark / .light on <html>.
         surface: {
-          DEFAULT: "#0c1324",
-          dim: "#0c1324",
+          DEFAULT: "rgb(var(--surface-rgb) / <alpha-value>)",
+          dim: "rgb(var(--surface-rgb) / <alpha-value>)",
           bright: "#33394c",
           container: {
-            DEFAULT: "#191f31",
-            low: "#151b2d",
-            high: "#23293c",
-            highest: "#2e3447",
-            lowest: "#070d1f",
+            DEFAULT: "rgb(var(--surface-container-rgb) / <alpha-value>)",
+            low: "rgb(var(--surface-container-low-rgb) / <alpha-value>)",
+            high: "rgb(var(--surface-container-high-rgb) / <alpha-value>)",
+            highest: "rgb(var(--surface-container-highest-rgb) / <alpha-value>)",
+            lowest: "rgb(var(--surface-container-lowest-rgb) / <alpha-value>)",
           },
-          variant: "#2e3447",
+          variant: "rgb(var(--surface-variant-rgb) / <alpha-value>)",
           tint: "#4cd6ff",
         },
         "on-surface": {
-          DEFAULT: "#dce1fb",
-          variant: "#bbc9cf",
+          DEFAULT: "rgb(var(--on-surface-rgb) / <alpha-value>)",
+          variant: "rgb(var(--on-surface-variant-rgb) / <alpha-value>)",
         },
         primary: {
           DEFAULT: "#a4e6ff",
@@ -70,19 +71,19 @@ const config: Config = {
           container: "#ffdad6",
         },
         outline: {
-          DEFAULT: "#859399",
-          variant: "#3c494e",
+          DEFAULT: "rgb(var(--outline-rgb) / <alpha-value>)",
+          variant: "rgb(var(--outline-variant-rgb) / <alpha-value>)",
         },
         inverse: {
           surface: "#dce1fb",
           "on-surface": "#2a3043",
           primary: "#00677f",
         },
-        background: "#0c1324",
-        "on-background": "#dce1fb",
+        background: "rgb(var(--background-rgb) / <alpha-value>)",
+        "on-background": "rgb(var(--on-background-rgb) / <alpha-value>)",
 
         // Legacy aliases for compatibility
-        foreground: "#dce1fb",
+        foreground: "rgb(var(--on-surface-rgb) / <alpha-value>)",
         safe: "#4edea3",
         warning: "#F59E0B",
         danger: "#ffb4ab",

@@ -6,6 +6,7 @@
 
 /* Dark theme (default) */
 :root, .dark {
+  /* Hex variables — used by hand-written CSS in this file */
   --surface: #0c1324;
   --surface-container: #191f31;
   --surface-container-low: #151b2d;
@@ -21,6 +22,21 @@
   --error: #ffb4ab;
   --error-container: #93000a;
   --outline-variant: #3c494e;
+
+  /* RGB-triplet variables — consumed by Tailwind for `bg-x/30` opacity modifiers */
+  --background-rgb: 12 19 36;
+  --surface-rgb: 12 19 36;
+  --surface-container-rgb: 25 31 49;
+  --surface-container-low-rgb: 21 27 45;
+  --surface-container-high-rgb: 35 41 60;
+  --surface-container-highest-rgb: 46 52 71;
+  --surface-container-lowest-rgb: 7 13 31;
+  --surface-variant-rgb: 46 52 71;
+  --on-surface-rgb: 220 225 251;
+  --on-surface-variant-rgb: 187 201 207;
+  --on-background-rgb: 220 225 251;
+  --outline-rgb: 133 147 153;
+  --outline-variant-rgb: 60 73 78;
 }
 
 /* Light theme */
@@ -40,6 +56,21 @@
   --error: #dc2626;
   --error-container: #fecaca;
   --outline-variant: #94a3b8;
+
+  --background-rgb: 240 244 248;
+  --surface-rgb: 240 244 248;
+  --surface-container-rgb: 226 232 240;
+  --surface-container-low-rgb: 237 242 247;
+  --surface-container-high-rgb: 203 213 225;
+  --surface-container-highest-rgb: 176 190 197;
+  --surface-container-lowest-rgb: 255 255 255;
+  --surface-variant-rgb: 203 213 225;
+  /* Punchy, high-contrast text on light surfaces — readable for older readers */
+  --on-surface-rgb: 8 15 30;
+  --on-surface-variant-rgb: 30 41 60;
+  --on-background-rgb: 8 15 30;
+  --outline-rgb: 71 85 105;
+  --outline-variant-rgb: 100 116 139;
 }
 
 /* ─── Base ─── */
@@ -526,6 +557,29 @@ body {
 }
 .light .section-glow-emerald {
   background: radial-gradient(ellipse 80% 50% at 50% 50%, rgba(0, 109, 74, 0.03) 0%, transparent 70%);
+}
+
+/* ─── Light-mode overrides for "ghost" white borders/overlays ───
+   These tokens (border-white, bg-black) were chosen for the dark theme.
+   In light mode we flip them to subtle dark/white variants so they remain visible. */
+.light .border-white\/5  { border-color: rgba(15, 23, 42, 0.06) !important; }
+.light .border-white\/10 { border-color: rgba(15, 23, 42, 0.10) !important; }
+.light .border-white\/20 { border-color: rgba(15, 23, 42, 0.18) !important; }
+
+.light .bg-black\/20 { background-color: rgba(15, 23, 42, 0.06) !important; }
+.light .bg-black\/40 { background-color: rgba(15, 23, 42, 0.10) !important; }
+.light .bg-black\/60 { background-color: rgba(15, 23, 42, 0.18) !important; }
+.light .bg-black\/80 { background-color: rgba(15, 23, 42, 0.40) !important; }
+
+/* Ambient hero glows that look right on dark but wash out on light */
+.light .bg-primary\/\[0\.03\] { background-color: rgba(2, 132, 199, 0.05) !important; }
+.light .bg-secondary\/\[0\.02\] { background-color: rgba(4, 120, 87, 0.04) !important; }
+
+/* TopBar uses bg-black/40 for the scrolled state — keep it as a darkening tint
+   in dark mode but make it a frosted white in light mode for legibility */
+.light nav.bg-black\/40,
+.light nav .bg-black\/40 {
+  background-color: rgba(255, 255, 255, 0.85) !important;
 }
 
 /* ─── Custom Floating & Scanning Animations ─── */

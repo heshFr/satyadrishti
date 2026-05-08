@@ -147,7 +147,7 @@ const CallHistory = () => {
                 <div key={key} className={`bg-surface-container-low p-4 rounded-xl border-b-2 ${borderColor}`}>
                   <MaterialIcon icon={icon} size={20} className={color} />
                   <p className={`text-2xl font-headline font-black mt-2 ${color}`}>{verdictCounts[key]}</p>
-                  <p className="text-[10px] font-label uppercase tracking-widest text-on-surface-variant mt-1">{verdictConfig[key].label}</p>
+                  <p className="text-[12px] font-label uppercase tracking-widest text-on-surface-variant mt-1">{verdictConfig[key].label}</p>
                 </div>
               ))}
             </div>
@@ -222,10 +222,10 @@ const CallHistory = () => {
                       <div>
                         <h3 className="font-headline font-bold text-on-surface group-hover:text-primary transition-colors">{scan.file_name}</h3>
                         <div className="flex gap-4 mt-1">
-                          <span className="text-[10px] text-on-surface-variant uppercase tracking-widest">
+                          <span className="text-[12px] text-on-surface-variant uppercase tracking-widest">
                             {new Date(scan.created_at).toLocaleString()}
                           </span>
-                          <span className="text-[10px] text-on-surface-variant uppercase tracking-widest">
+                          <span className="text-[12px] text-on-surface-variant uppercase tracking-widest">
                             {scan.file_type || "Media"}
                           </span>
                         </div>
@@ -233,13 +233,13 @@ const CallHistory = () => {
                     </div>
                     <div className="flex items-center gap-8 text-right">
                       <div>
-                        <div className={`px-3 py-1 rounded-full ${config.badgeBg} ${config.badgeText} text-[10px] font-black uppercase tracking-widest`}>
+                        <div className={`px-3 py-1 rounded-full ${config.badgeBg} ${config.badgeText} text-[12px] font-black uppercase tracking-widest`}>
                           Verdict: {config.label}
                         </div>
                       </div>
                       <div className="hidden sm:block">
                         <p className="text-xl font-headline font-black text-on-surface">{scan.confidence}%</p>
-                        <p className="text-[10px] text-on-surface-variant uppercase tracking-widest">Confidence</p>
+                        <p className="text-[12px] text-on-surface-variant uppercase tracking-widest">Confidence</p>
                       </div>
                       <MaterialIcon icon="chevron_right" size={20} className="text-on-surface-variant group-hover:translate-x-1 transition-transform" />
                     </div>

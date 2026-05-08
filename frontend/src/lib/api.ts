@@ -60,7 +60,15 @@ export const api = {
         body: JSON.stringify({ email, password, name }),
       }),
     me: () => apiFetch<User>("/api/auth/me"),
-    updateProfile: (data: { name?: string; language_pref?: string }) =>
+    updateProfile: (data: {
+      name?: string;
+      language_pref?: string;
+      notify_email_threats?: boolean;
+      notify_email_reports?: boolean;
+      notify_push_enabled?: boolean;
+      emergency_contact_name?: string;
+      emergency_contact_phone?: string;
+    }) =>
       apiFetch<User>("/api/auth/me", {
         method: "PUT",
         body: JSON.stringify(data),
