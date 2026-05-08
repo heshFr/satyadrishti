@@ -1055,20 +1055,24 @@ class ImageForensicsDetector:
             conf_cap = 75.0
 
         # Compression adjustments — social media compression adds artifacts
-        # but does NOT erase AI generation patterns. Be moderately conservative:
-        # raise threshold enough to filter compression false positives but
-        # not so much that we miss actual AI images shared via social media.
+        # that pixel-level detectors mistake for AI generation. Be very
+        # conservative on phone selfies / WhatsApp / Instagram content:
+        # demand a near-certain neural score before flagging.
         if is_social_media:
-            fake_thresh = max(fake_thresh, 0.72)
-            real_thresh = min(real_thresh, 0.28)
-            conf_cap = min(conf_cap, 82.0)
+            fake_thresh = max(fake_thresh, 0.82)   # was 0.72
+            real_thresh = min(real_thresh, 0.30)
+            conf_cap = min(conf_cap, 75.0)         # was 82
         elif compression_severity == "heavy":
-            fake_thresh = max(fake_thresh, 0.68)
+            fake_thresh = max(fake_thresh, 0.75)   # was 0.68
             real_thresh = min(real_thresh, 0.32)
-            conf_cap = min(conf_cap, 85.0)
+            conf_cap = min(conf_cap, 80.0)         # was 85
 
         if is_smartphone:
-            conf_cap = min(conf_cap, 92.0)
+            # Smartphones use aggressive computational photography (HDR,
+            # tone mapping, ML denoise) that pixel-level detectors confuse
+            # for synthesis. Push the fake threshold up further.
+            fake_thresh = max(fake_thresh, 0.78)
+            conf_cap = min(conf_cap, 88.0)         # was 92
 
         return {
             "fake_threshold": min(0.90, fake_thresh),
@@ -1105,16 +1109,56 @@ class ImageForensicsDetector:
                 "compression_severity", "moderate"
             ) if isinstance(scores.get("compression"), dict) else "moderate"
 
+        # ── GATE 0: Strong-Platform Prior Override ──
+        # When the compression detector is highly confident (>= 0.9) that the
+        # image came from a social-media platform AND statistical reliability
+        # is very low, the pixel-level neural detectors are operating on
+        # codec noise rather than synthesis artifacts and routinely false-
+        # positive on real photos (WhatsApp selfies, Instagram posts, etc.).
+        # In this regime, trust the prior: the overwhelming majority of
+        # such images are real. Override to authentic UNLESS positive AI
+        # metadata is present.
+        comp_info = scores.get("compression") if isinstance(scores.get("compression"), dict) else {}
+        platform_conf = comp_info.get("platform_confidence", 0) if comp_info else 0
+        if (
+            is_social_media
+            and platform_conf >= 0.9
+            and stat_reliability < 0.30
+            and meta < 0.8
+        ):
+            report["verdict"] = "authentic"
+            report["confidence"] = 65.0
+            report["forensic_checks"].append({
+                "id": "platform_prior_override",
+                "name": "Strong Social-Media Prior",
+                "status": "pass",
+                "description": (
+                    f"Confirmed social-media origin (platform confidence "
+                    f"{platform_conf*100:.0f}%) with very low statistical "
+                    f"reliability ({stat_reliability:.2f}). Pixel-level "
+                    f"detectors are unreliable on this compression profile, "
+                    f"so the verdict defers to the strong prior that "
+                    f"social-media uploads are overwhelmingly real photos. "
+                    f"Manual review recommended if context is suspicious."
+                ),
+            })
+            return
+
         # ── GATE 1: Metadata Override ──
+        # Only fires when an AI signature is *positively* identified in EXIF/C2PA.
         if meta > 0.8:
             report["verdict"] = "ai-generated"
             report["confidence"] = min(99.0, 70.0 + meta * 25)
             return
 
         # ── GATE 2: Face Micro-Anomaly ──
-        # Strong face evidence (0.82+) combined with neural agreement
+        # Phone cameras + WhatsApp compression routinely produce face scores
+        # in the 0.80-0.90 band on real selfies (computational photography,
+        # tone mapping, narrow DoF). Tighten the gate AND skip it entirely
+        # when social-media compression is detected — face-geometry analysis
+        # is not reliable on heavily compressed images.
         neural = scores.get("neural_effective", scores.get("neural", 0.0))
-        if face > 0.82 and neural > 0.60:
+        if not is_social_media and face > 0.92 and neural > 0.78:
             report["verdict"] = "ai-generated"
             report["confidence"] = min(88.0, 60.0 + (face + neural) / 2 * 30)
             return
@@ -1141,7 +1185,11 @@ class ImageForensicsDetector:
         }
 
         # ── GATE 3: Noise dead zones ──
-        if noise > 0.65:
+        # WhatsApp / Instagram apply heavy ML-driven denoising that flattens
+        # sensor-noise patterns the same way GANs do, so noise-only triggers
+        # are unreliable on social-media images. Require a much higher noise
+        # score and corroborating neural agreement before firing this gate.
+        if not is_social_media and noise > 0.78 and neural > 0.65:
             report["verdict"] = "ai-generated"
             report["confidence"] = min(conf_cap, 50.0 + noise * 45)
             return
@@ -1149,11 +1197,14 @@ class ImageForensicsDetector:
         # ── RULE 0: Forced Inconclusive on High Uncertainty ──
         # When TTA std > 0.15, the model is guessing. Never give a confident
         # verdict unless non-neural signals independently provide strong evidence.
-        if cal.get("force_inconclusive") and not (meta > 0.8 or (face > 0.82 and neural > 0.60) or noise > 0.65):
-            # Check if CLIP has a confident opinion even when ViT is uncertain
+        if cal.get("force_inconclusive") and not (meta > 0.8 or (not is_social_media and face > 0.92 and neural > 0.78) or (not is_social_media and noise > 0.78)):
+            # Check if CLIP has a confident opinion even when ViT is uncertain.
+            # On social-media images the CLIP "AI" override is muted because
+            # CLIP also confuses heavy compression with synthesis; we keep
+            # the CLIP "real" override active because that's the safe direction.
             clip_score = scores.get("clip")
-            if clip_score is not None and clip_score > 0.70:
-                # CLIP thinks it's AI despite ViT uncertainty — trust CLIP
+            clip_fake_threshold = 0.85 if is_social_media else 0.75   # was 0.70
+            if clip_score is not None and clip_score > clip_fake_threshold:
                 report["verdict"] = "ai-generated"
                 report["confidence"] = min(75.0, 50.0 + clip_score * 30)
                 report["forensic_checks"].append({
@@ -1167,9 +1218,28 @@ class ImageForensicsDetector:
                 })
                 return
             elif clip_score is not None and clip_score < 0.35:
-                # CLIP thinks it's real despite ViT uncertainty — trust CLIP
                 report["verdict"] = "authentic"
                 report["confidence"] = min(75.0, 50.0 + (1 - clip_score) * 30)
+                return
+
+            # Social-media bias: when the model is uncertain AND the image
+            # carries clear social-media compression signatures, default to
+            # authentic with low confidence. WhatsApp/Instagram users sharing
+            # AI imagery is the rare case; the common case is real photos.
+            if is_social_media:
+                report["verdict"] = "authentic"
+                report["confidence"] = 60.0
+                report["forensic_checks"].append({
+                    "id": "social_media_bias",
+                    "name": "Social Media Compression Bias",
+                    "status": "pass",
+                    "description": (
+                        f"Image shows clear social-media compression signatures "
+                        f"and pixel-level analysis is inconclusive due to those "
+                        f"artifacts. Defaulting to authentic — manual review "
+                        f"recommended if context warrants."
+                    ),
+                })
                 return
 
             # Neither ViT nor CLIP is confident — genuinely inconclusive
@@ -1238,15 +1308,33 @@ class ImageForensicsDetector:
         else:
             combined = neural_lean * 0.4 + ensemble_score * 0.6
 
+        # Gray-zone bias: on social-media or smartphone-shared content,
+        # the prior probability of an AI image is much lower than the prior
+        # of a real photo. Without a clear AI signal, prefer authentic over
+        # inconclusive — better UX than perpetually unsure verdicts on real
+        # photos shared via WhatsApp / Instagram / phones.
+        gray_authentic_threshold = -0.3
+        if is_social_media:
+            gray_authentic_threshold = -0.10
+        elif is_smartphone:
+            gray_authentic_threshold = -0.20
+
         if combined > 0.3:
             report["verdict"] = "ai-generated"
             report["confidence"] = min(conf_cap, 55.0 + combined * 25)
-        elif combined < -0.3:
+        elif combined < gray_authentic_threshold:
             report["verdict"] = "authentic"
             report["confidence"] = min(conf_cap, 55.0 + abs(combined) * 25)
         else:
-            report["verdict"] = "inconclusive"
-            report["confidence"] = min(conf_cap, 50.0 + abs(combined) * 20)
+            # Genuinely inconclusive — but on social-media uploads, prefer to
+            # surface "authentic" with low confidence rather than block the user
+            # behind an inconclusive verdict.
+            if is_social_media:
+                report["verdict"] = "authentic"
+                report["confidence"] = min(conf_cap, 55.0)
+            else:
+                report["verdict"] = "inconclusive"
+                report["confidence"] = min(conf_cap, 50.0 + abs(combined) * 20)
 
     def analyze_video(
         self,
