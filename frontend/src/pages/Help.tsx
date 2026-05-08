@@ -68,7 +68,7 @@ const Help = () => {
 
   return (
     <Layout systemStatus="protected">
-      <div className="px-8 py-12 max-w-7xl mx-auto space-y-16">
+      <div className="px-4 sm:px-6 md:px-8 py-8 md:py-12 max-w-7xl mx-auto space-y-10 md:space-y-16">
 
         {/* ── Hero Section ── */}
         <section className="relative space-y-6">
@@ -76,7 +76,7 @@ const Help = () => {
             <span className="text-secondary font-label text-xs tracking-[0.2em] uppercase font-bold">
               Intelligence Center
             </span>
-            <h1 className="font-headline text-5xl md:text-6xl font-extrabold tracking-tight text-on-surface">
+            <h1 className="font-headline text-3xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-on-surface">
               How can we{" "}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-primary-container">
                 protect you
@@ -228,7 +228,7 @@ const Help = () => {
                         transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
                         className="overflow-hidden"
                       >
-                        <p className="px-8 pb-6 text-on-surface-variant leading-relaxed">{faq.answer}</p>
+                        <p className="px-5 sm:px-8 pb-6 text-on-surface-variant leading-relaxed">{faq.answer}</p>
                       </motion.div>
                     )}
                   </AnimatePresence>

@@ -489,7 +489,7 @@ const SettingsPage = () => {
       <TopBar systemStatus="protected" />
 
       {/* Hero */}
-      <section className="pt-40 pb-16 px-6 max-w-7xl mx-auto">
+      <section className="pt-32 md:pt-40 pb-12 md:pb-16 px-4 sm:px-6 max-w-7xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -499,10 +499,10 @@ const SettingsPage = () => {
           <span className="inline-block px-4 py-1.5 bg-primary/10 border border-primary/20 rounded-full text-primary font-mono text-[12px] font-black uppercase tracking-[0.3em]">
             System Configuration
           </span>
-          <h1 className="text-6xl md:text-7xl font-black font-headline tracking-tighter leading-[0.85] uppercase">
+          <h1 className="text-4xl sm:text-6xl md:text-7xl font-black font-headline tracking-tighter leading-[0.85] uppercase">
             Settings
           </h1>
-          <p className="max-w-2xl text-lg md:text-xl text-on-surface-variant font-light leading-relaxed">
+          <p className="max-w-2xl text-base md:text-xl text-on-surface-variant font-light leading-relaxed">
             Manage your identity, security, and how Satya Drishti behaves on your devices. Changes save automatically, except where you see an explicit save button.
           </p>
         </motion.div>
@@ -512,7 +512,7 @@ const SettingsPage = () => {
       <nav
         className="sticky top-24 z-30 bg-background/80 backdrop-blur-xl border-y border-white/5"
       >
-        <div className="max-w-7xl mx-auto px-6 overflow-x-auto">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 overflow-x-auto">
           <ul className="flex items-center gap-1 py-3 min-w-max">
             {SECTIONS.map((s) => (
               <li key={s.id}>
@@ -533,7 +533,7 @@ const SettingsPage = () => {
         </div>
       </nav>
 
-      <main className="max-w-4xl mx-auto px-6 py-16 space-y-24">
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-10 md:py-16 space-y-16 md:space-y-24">
         {/* ─── Sign-in nudge for unauthenticated users ─── */}
         {!isAuthenticated && (
           <motion.div

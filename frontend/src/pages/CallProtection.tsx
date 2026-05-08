@@ -239,7 +239,7 @@ const CallProtection = () => {
 
   return (
     <Layout systemStatus={systemStatus}>
-      <div className="pb-12 px-8 max-w-[1600px] mx-auto space-y-8">
+      <div className="pb-12 px-4 sm:px-6 md:px-8 max-w-[1600px] mx-auto space-y-6 md:space-y-8">
 
         {/* ── Persistent error banner (visible in idle + active) ── */}
         <AnimatePresence>
@@ -291,10 +291,10 @@ const CallProtection = () => {
               </div>
 
               {/* Title */}
-              <h1 className="text-4xl md:text-6xl font-headline font-black tracking-tighter text-on-surface">
+              <h1 className="text-3xl sm:text-4xl md:text-6xl font-headline font-black tracking-tighter text-on-surface px-2">
                 Live Voice Fraud Detection System
               </h1>
-              <div className="text-lg md:text-xl text-on-surface-variant font-light max-w-2xl mx-auto flex flex-col gap-1 items-center">
+              <div className="text-base sm:text-lg md:text-xl text-on-surface-variant font-light max-w-2xl mx-auto flex flex-col gap-1 items-center">
                 <p>System Status: <span className="text-on-surface font-bold">STANDBY</span></p>
                 <p>Biological Guardrail: <span className="text-secondary font-bold">ACTIVE</span></p>
               </div>
@@ -303,7 +303,7 @@ const CallProtection = () => {
               <motion.div className="pt-8">
                 <motion.button
                   onClick={() => cp.startProtection()}
-                  className="group relative px-16 py-7 bg-gradient-to-br from-primary via-primary-container to-primary text-on-primary font-headline font-extrabold text-xl uppercase tracking-wider rounded-2xl overflow-hidden cursor-pointer"
+                  className="group relative px-8 py-5 sm:px-12 sm:py-6 md:px-16 md:py-7 bg-gradient-to-br from-primary via-primary-container to-primary text-on-primary font-headline font-extrabold text-base sm:text-lg md:text-xl uppercase tracking-wider rounded-2xl overflow-hidden cursor-pointer max-w-full"
                   whileHover={{ scale: 1.03 }}
                   whileTap={{ scale: 0.97 }}
                   animate={{
@@ -323,9 +323,9 @@ const CallProtection = () => {
                     animate={{ scale: [1, 1.08, 1], opacity: [0.5, 0, 0.5] }}
                     transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
                   />
-                  <span className="relative z-10 flex items-center gap-4">
+                  <span className="relative z-10 flex items-center justify-center gap-3 sm:gap-4 whitespace-normal text-center">
                     Begin Real Time Monitoring
-                    <MaterialIcon icon="arrow_forward" size={24} />
+                    <MaterialIcon icon="arrow_forward" size={20} />
                   </span>
                 </motion.button>
               </motion.div>
@@ -367,21 +367,21 @@ const CallProtection = () => {
             <motion.section {...stagger(0)} className="flex flex-wrap gap-4 py-2">
               <button
                 onClick={() => cp.stopProtection()}
-                className="flex-1 min-w-[200px] h-16 bg-gradient-to-r from-error-container to-error text-on-error hover:brightness-110 transition-all duration-300 rounded-2xl flex items-center justify-center gap-3 font-headline font-extrabold text-base uppercase tracking-wider shadow-lg cursor-pointer"
+                className="flex-1 min-w-[140px] sm:min-w-[200px] h-14 sm:h-16 bg-gradient-to-r from-error-container to-error text-on-error hover:brightness-110 transition-all duration-300 rounded-2xl flex items-center justify-center gap-3 font-headline font-extrabold text-base uppercase tracking-wider shadow-lg cursor-pointer"
               >
                 <MaterialIcon icon="call_end" size={24} />
                 Terminate Session
               </button>
               <button
                 onClick={() => toast.warning("Flagged for compliance audit")}
-                className="flex-1 min-w-[200px] h-16 bg-surface-container-highest border border-outline-variant/20 hover:bg-surface-bright transition-all duration-300 rounded-2xl flex items-center justify-center gap-3 font-bold shadow-lg cursor-pointer"
+                className="flex-1 min-w-[140px] sm:min-w-[200px] h-14 sm:h-16 bg-surface-container-highest border border-outline-variant/20 hover:bg-surface-bright transition-all duration-300 rounded-2xl flex items-center justify-center gap-3 font-bold shadow-lg cursor-pointer"
               >
                 <MaterialIcon icon="notification_important" className="text-on-surface-variant" size={20} />
                 Flag for Audit
               </button>
               <button
                 onClick={() => toast.success("Audit log exported")}
-                className="flex-1 min-w-[200px] h-16 bg-surface-container-highest border border-outline-variant/20 hover:bg-surface-bright transition-all duration-300 rounded-2xl flex items-center justify-center gap-3 font-bold shadow-lg cursor-pointer"
+                className="flex-1 min-w-[140px] sm:min-w-[200px] h-14 sm:h-16 bg-surface-container-highest border border-outline-variant/20 hover:bg-surface-bright transition-all duration-300 rounded-2xl flex items-center justify-center gap-3 font-bold shadow-lg cursor-pointer"
               >
                 <MaterialIcon icon="save" className="text-on-surface-variant" size={20} />
                 Export Audit Log
@@ -389,7 +389,7 @@ const CallProtection = () => {
               {!cp.isScreenShare && (
                 <button
                   onClick={() => cp.enableScreenShare()}
-                  className="flex-1 min-w-[200px] h-16 bg-surface-container-highest border border-primary/20 hover:bg-primary/10 hover:border-primary/40 transition-all duration-300 rounded-2xl flex items-center justify-center gap-3 font-bold shadow-lg cursor-pointer"
+                  className="flex-1 min-w-[140px] sm:min-w-[200px] h-14 sm:h-16 bg-surface-container-highest border border-primary/20 hover:bg-primary/10 hover:border-primary/40 transition-all duration-300 rounded-2xl flex items-center justify-center gap-3 font-bold shadow-lg cursor-pointer"
                 >
                   <MaterialIcon icon="screen_share" className="text-primary" size={20} />
                   <span className="text-on-surface">Reconnect Screen Share</span>
@@ -397,7 +397,7 @@ const CallProtection = () => {
               )}
               <button
                 onClick={() => setExplainMode(!explainMode)}
-                className={`flex-1 min-w-[200px] h-16 border transition-all duration-300 rounded-2xl flex items-center justify-center gap-3 font-bold shadow-lg cursor-pointer ${
+                className={`flex-1 min-w-[140px] sm:min-w-[200px] h-14 sm:h-16 border transition-all duration-300 rounded-2xl flex items-center justify-center gap-3 font-bold shadow-lg cursor-pointer ${
                   explainMode 
                     ? "bg-primary/20 border-primary/50 text-primary" 
                     : "bg-surface-container-highest border-outline-variant/20 hover:bg-surface-bright text-on-surface-variant"
@@ -469,7 +469,7 @@ const CallProtection = () => {
             {/* ── HERO PANEL ── */}
             <motion.section
               {...stagger(2)}
-              className={`relative overflow-hidden h-60 rounded-2xl glass-panel flex flex-col justify-center px-12 border border-outline-variant/10 shadow-2xl ${isDanger ? "border-error/50 animate-danger-pulse" : ""}`}
+              className={`relative overflow-hidden min-h-[15rem] md:h-60 rounded-2xl glass-panel flex flex-col justify-center px-5 sm:px-8 md:px-12 py-6 md:py-0 border border-outline-variant/10 shadow-2xl ${isDanger ? "border-error/50 animate-danger-pulse" : ""}`}
             >
               <div
                 className="absolute inset-0 opacity-20 bg-center"
@@ -477,21 +477,21 @@ const CallProtection = () => {
                   backgroundImage: `url("data:image/svg+xml,%3Csvg width='1000' height='200' viewBox='0 0 1000 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 100 Q 25 20 50 100 T 100 100 T 150 100 T 200 100 T 250 100 T 300 100 T 350 100 T 400 100 T 450 100 T 500 100 T 550 100 T 600 100 T 650 100 T 700 100 T 750 100 T 800 100 T 850 100 T 900 100 T 950 100 T 1000 100' stroke='%2300D1FF' stroke-width='2' fill='none' opacity='0.5'/%3E%3C/svg%3E")`,
                 }}
               />
-              <div className="relative z-10 flex justify-between items-end">
+              <div className="relative z-10 flex flex-col xl:flex-row xl:justify-between xl:items-end gap-6">
                 <div>
-                  <div className="flex items-center gap-3 mb-2">
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">
                     <span className="text-primary font-bold tracking-widest text-xs uppercase">
                       Analyzing voice stream...
                     </span>
-                    <div className="h-px w-12 bg-primary/30" />
+                    <div className="hidden sm:block h-px w-12 bg-primary/30" />
                     <span className="text-[12px] text-secondary font-bold uppercase tracking-widest animate-pulse">
                       System Status: MONITORING LIVE
                     </span>
                   </div>
-                  <h1 className="text-4xl font-headline font-black tracking-tighter text-on-surface mb-6">
+                  <h1 className="text-2xl sm:text-3xl md:text-4xl font-headline font-black tracking-tighter text-on-surface mb-4 md:mb-6">
                     Live Voice Fraud Detection System
                   </h1>
-                  <div className="flex flex-wrap gap-12">
+                  <div className="flex flex-wrap gap-4 sm:gap-8 md:gap-12">
                     {[
                       {
                         label: "Pitch Stability",
@@ -571,13 +571,13 @@ const CallProtection = () => {
             </AnimatePresence>
 
             {/* ── MAIN GRID: Video/Spectrogram LEFT + Analysis RIGHT ── */}
-            <div className="grid grid-cols-12 gap-8">
+            <div className="grid grid-cols-12 gap-4 md:gap-8">
 
               {/* LEFT: Video Preview or Live Spectrogram */}
-              <motion.div {...stagger(3)} className="col-span-12 lg:col-span-8 flex flex-col gap-8">
+              <motion.div {...stagger(3)} className="col-span-12 lg:col-span-8 flex flex-col gap-4 md:gap-8">
                 {/* Media Panel */}
-                <div className="h-[480px] rounded-2xl bg-surface-container-low border border-outline-variant/10 flex flex-col overflow-hidden shadow-xl">
-                  <div className="p-5 border-b border-outline-variant/10 bg-surface-container/30 flex justify-between items-center">
+                <div className="h-[320px] sm:h-[400px] md:h-[480px] rounded-2xl bg-surface-container-low border border-outline-variant/10 flex flex-col overflow-hidden shadow-xl">
+                  <div className="p-4 sm:p-5 border-b border-outline-variant/10 bg-surface-container/30 flex flex-wrap gap-2 justify-between items-center">
                     <div className="flex items-center gap-3">
                       <span className={`w-2.5 h-2.5 rounded-full bg-secondary animate-pulse shadow-[0_0_8px_rgba(78,222,163,0.8)]`} />
                       <h2 className="font-headline font-bold text-on-surface text-lg">
@@ -600,8 +600,8 @@ const CallProtection = () => {
                 </div>
 
                 {/* Call Timeline */}
-                <div className="p-8 rounded-2xl bg-surface-container border border-outline-variant/10 flex-1">
-                  <div className="flex justify-between items-center mb-10">
+                <div className="p-5 md:p-8 rounded-2xl bg-surface-container border border-outline-variant/10 flex-1">
+                  <div className="flex flex-wrap gap-3 justify-between items-center mb-6 md:mb-10">
                     <div className="flex items-center gap-3">
                       <MaterialIcon icon="timeline" className="text-primary" size={24} />
                       <h3 className="font-headline font-bold text-on-surface text-xl">Forensic Timeline</h3>
@@ -652,10 +652,10 @@ const CallProtection = () => {
               </motion.div>
 
               {/* RIGHT: Analysis Stack */}
-              <motion.div {...stagger(4)} className="col-span-12 lg:col-span-4 flex flex-col gap-8">
+              <motion.div {...stagger(4)} className="col-span-12 lg:col-span-4 flex flex-col gap-4 md:gap-8">
 
                 {/* Voice Identity Card */}
-                <div className="p-8 rounded-2xl bg-surface-container border border-outline-variant/10 relative overflow-hidden shadow-lg">
+                <div className="p-5 md:p-8 rounded-2xl bg-surface-container border border-outline-variant/10 relative overflow-hidden shadow-lg">
                   <div className="flex justify-between items-start mb-8">
                     <div className="flex gap-4">
                       <div className="w-14 h-14 rounded-xl bg-surface-container-high flex items-center justify-center border border-outline-variant/20 shadow-inner">
@@ -754,11 +754,11 @@ const CallProtection = () => {
                 </div>
 
                 {/* Threat Level Card */}
-                <div className="p-8 rounded-2xl bg-surface-container border border-outline-variant/10 shadow-lg">
-                  <h3 className="font-headline font-bold text-on-surface text-xl mb-8">Threat Analysis</h3>
-                  <div className="flex items-center gap-10">
+                <div className="p-5 md:p-8 rounded-2xl bg-surface-container border border-outline-variant/10 shadow-lg">
+                  <h3 className="font-headline font-bold text-on-surface text-xl mb-6 md:mb-8">Threat Analysis</h3>
+                  <div className="flex flex-col sm:flex-row items-center gap-6 sm:gap-10">
                     <ThreatGauge value={cp.threatEscalation} />
-                    <div className="flex-1 space-y-6">
+                    <div className="flex-1 w-full space-y-6">
                       <div>
                         <div className="flex justify-between text-[12px] uppercase font-bold text-on-surface-variant mb-2 tracking-widest">
                           <span>Clone Risk</span>
@@ -794,7 +794,7 @@ const CallProtection = () => {
                 </div>
 
                 {/* Sentiment & Intent */}
-                <div className="p-8 rounded-2xl bg-surface-container border border-outline-variant/10 shadow-lg">
+                <div className="p-5 md:p-8 rounded-2xl bg-surface-container border border-outline-variant/10 shadow-lg">
                   <h3 className="font-headline font-bold text-on-surface text-xl mb-6">Sentiment &amp; Intent</h3>
                   <div className="space-y-4">
                     {sentimentItems.map((item) => (
@@ -816,7 +816,7 @@ const CallProtection = () => {
                 </div>
 
                 {/* Compliance Guardrails */}
-                <div className="p-8 rounded-2xl bg-surface-container border border-outline-variant/10 shadow-lg">
+                <div className="p-5 md:p-8 rounded-2xl bg-surface-container border border-outline-variant/10 shadow-lg">
                   <h3 className="font-headline font-bold text-on-surface text-xl mb-4 flex items-center gap-2">
                     <MaterialIcon icon="shield" className="text-secondary" /> 
                     COMPLIANCE GUARDRAILS ACTIVE
@@ -840,7 +840,7 @@ const CallProtection = () => {
                 </div>
 
                 {/* Edge Case Handling */}
-                <div className="p-8 rounded-2xl bg-surface-container border border-outline-variant/10 shadow-lg">
+                <div className="p-5 md:p-8 rounded-2xl bg-surface-container border border-outline-variant/10 shadow-lg">
                   <h3 className="font-headline font-bold text-on-surface text-xl mb-4 flex items-center gap-2">
                     <MaterialIcon icon="dynamic_feed" className="text-primary" /> 
                     EDGE CASE HANDLING
@@ -887,13 +887,13 @@ const CallProtection = () => {
             {/* ── FUSION SUMMARY ── */}
             <motion.section
               {...stagger(5)}
-              className={`p-10 rounded-2xl bg-surface-container-high border ${fusionBorder} ${fusionGlow} relative overflow-hidden`}
+              className={`p-5 md:p-10 rounded-2xl bg-surface-container-high border ${fusionBorder} ${fusionGlow} relative overflow-hidden`}
             >
               <div className="absolute top-0 right-0 w-64 h-64 bg-secondary/5 blur-[100px] rounded-full" />
-              <div className="flex flex-col md:flex-row gap-12 items-center relative z-10">
-                <div className="flex-1">
-                  <div className="flex items-center gap-4 mb-6">
-                    <div className={`p-3 rounded-full ${isDanger ? "bg-error/20 shadow-[0_0_15px_rgba(255,180,171,0.3)]" : "bg-secondary/20 shadow-[0_0_15px_rgba(78,222,163,0.3)]"}`}>
+              <div className="flex flex-col md:flex-row gap-6 md:gap-12 items-start md:items-center relative z-10">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-3 md:gap-4 mb-4 md:mb-6">
+                    <div className={`p-3 rounded-full shrink-0 ${isDanger ? "bg-error/20 shadow-[0_0_15px_rgba(255,180,171,0.3)]" : "bg-secondary/20 shadow-[0_0_15px_rgba(78,222,163,0.3)]"}`}>
                       <MaterialIcon
                         icon={isDanger ? "gpp_bad" : "verified"}
                         filled
@@ -901,11 +901,11 @@ const CallProtection = () => {
                         size={30}
                       />
                     </div>
-                    <h2 className={`font-headline text-4xl font-black uppercase tracking-tight ${fusionColor}`}>
+                    <h2 className={`font-headline text-2xl sm:text-3xl md:text-4xl font-black uppercase tracking-tight ${fusionColor}`}>
                       {fusionVerdict}
                     </h2>
                   </div>
-                  <p className="text-on-surface-variant leading-relaxed text-xl">
+                  <p className="text-on-surface-variant leading-relaxed text-base md:text-xl">
                     {isDanger ? (
                       <>
                         Signals from{" "}
@@ -925,12 +925,12 @@ const CallProtection = () => {
                     )}
                   </p>
                 </div>
-                <div className="flex flex-col items-center justify-center px-12 py-8 border-l border-outline-variant/20">
-                  <div className="text-[14px] font-bold text-on-surface-variant tracking-[0.3em] mb-3 uppercase">
+                <div className="w-full md:w-auto flex flex-col items-center justify-center px-0 md:px-12 py-6 md:py-8 border-t md:border-t-0 md:border-l border-outline-variant/20">
+                  <div className="text-[12px] md:text-[14px] font-bold text-on-surface-variant tracking-[0.3em] mb-3 uppercase">
                     Confidence Interval
                   </div>
-                  <div className={`text-7xl font-black drop-shadow-[0_0_10px_rgba(78,222,163,0.4)] ${fusionColor}`}>
-                    {confidencePct.toFixed(2)}<span className="text-2xl opacity-50">%</span>
+                  <div className={`text-5xl sm:text-6xl md:text-7xl font-black drop-shadow-[0_0_10px_rgba(78,222,163,0.4)] ${fusionColor}`}>
+                    {confidencePct.toFixed(2)}<span className="text-xl md:text-2xl opacity-50">%</span>
                   </div>
                 </div>
               </div>
