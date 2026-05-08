@@ -460,18 +460,45 @@ async def analyze_media(
             raise HTTPException(status_code=500, detail=result["error"])
 
         # ── Decision Safety Layer ──
-        # Rule: If multiple anomalies detected, system overrides model output
+        # The image detector's _verdict_photo already runs a calibrated,
+        # compression-aware ensemble that *intentionally* defers to the
+        # social-media prior when the pixel-level detectors are operating
+        # in their unreliable regime. We must not blindly clobber that
+        # judgment here — doing so was the cause of real WhatsApp photos
+        # being flagged "ai-generated" even after the detector returned
+        # "authentic" (the individual face/model/clip checks remain "fail"
+        # but their reliability is already accounted for upstream).
         anomalies = [c for c in result.get("forensic_checks", []) if c.get("status") in ("fail", "warn")]
         anomaly_count = len([c for c in anomalies if c.get("status") == "fail"])
-        
+
         final_verdict = result.get("verdict", "inconclusive")
-        
+
+        # Did the detector apply a strong prior override (e.g. confirmed
+        # WhatsApp / Instagram with low statistical reliability)? If so,
+        # respect its verdict — the safety layer is not allowed to flip it.
+        prior_override_applied = any(
+            c.get("id") == "platform_prior_override"
+            for c in result.get("forensic_checks", [])
+        )
+
         # Override Logic
         if any(c.get("id") == "biological_veto" and c.get("status") == "fail" for c in result.get("forensic_checks", [])):
             final_verdict = "ai-generated"
-        elif anomaly_count >= 2:
+        elif (
+            not prior_override_applied
+            and anomaly_count >= 3
+            and result.get("confidence", 0) >= 70
+            and final_verdict != "authentic"
+        ):
+            # Tightened: require 3+ failing layers (was 2), require detector
+            # itself to have moderate confidence (was unconditional), and
+            # never flip a confident "authentic" verdict to "ai-generated".
             final_verdict = "ai-generated"
-        elif result.get("confidence", 0) < 60:
+        elif final_verdict == "authentic" and prior_override_applied:
+            # Belt-and-braces: the prior-override path returned authentic;
+            # keep it as-is regardless of anomaly counts.
+            pass
+        elif result.get("confidence", 0) < 60 and final_verdict != "authentic":
             final_verdict = "inconclusive"
         
         # UI Signal for anomalies even if not fully synthetic
