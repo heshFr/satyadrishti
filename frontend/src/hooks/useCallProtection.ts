@@ -170,6 +170,19 @@ export function useCallProtection() {
   // Guard to prevent concurrent startProtection calls
   const startingRef = useRef(false);
 
+  // ── Anti-false-positive state ────────────────────────────────────────
+  // A single noisy 5-second chunk should NOT flip the UI to DANGER. We
+  // require two consecutive synthetic detections, and we honor a manual
+  // "Mark as Authentic" override that silences alerts for 60 seconds.
+  const syntheticStreakRef = useRef(0);   // # of consecutive synthetic chunks
+  const vetoStreakRef = useRef(0);        // # of consecutive biological_veto chunks
+  const authenticUntilRef = useRef<number>(0);  // epoch ms; while > now, suppress alerts
+
+  // Tunables
+  const SYNTHETIC_CONFIRM_CHUNKS = 2;   // require 2 chunks (~10s) before alert
+  const VETO_CONFIRM_CHUNKS = 2;        // require 2 vetoes too — single false biomarker no longer escalates
+  const SYNTHETIC_CONFIDENCE_FLOOR = 75; // raise from old 60
+
   const cleanup = useCallback(() => {
     // Reset the starting guard
     startingRef.current = false;
@@ -267,8 +280,28 @@ export function useCallProtection() {
           const biologicalVeto = (data.biological_veto as boolean) ?? false;
           const vetoReason = (data.veto_reason as string) ?? null;
 
-          // If biological veto triggered, force critical state
-          if (biologicalVeto) {
+          // Manual override: while authenticUntil is in the future, suppress
+          // synthetic flags entirely (the user told us this is a real human).
+          const now = Date.now();
+          const overrideActive = authenticUntilRef.current > now;
+
+          // Update streak counters
+          if (biologicalVeto && !overrideActive) {
+            vetoStreakRef.current += 1;
+          } else {
+            vetoStreakRef.current = 0;
+          }
+          if (isSynthetic && confidence >= SYNTHETIC_CONFIDENCE_FLOOR && !overrideActive) {
+            syntheticStreakRef.current += 1;
+          } else {
+            syntheticStreakRef.current = 0;
+          }
+
+          const vetoConfirmed = vetoStreakRef.current >= VETO_CONFIRM_CHUNKS;
+          const syntheticConfirmed = syntheticStreakRef.current >= SYNTHETIC_CONFIRM_CHUNKS;
+
+          if (vetoConfirmed) {
+            // Sustained biological veto across multiple chunks — escalate to critical
             next.biologicalVeto = true;
             next.vetoReason = vetoReason;
             next.audio = {
@@ -278,7 +311,6 @@ export function useCallProtection() {
             };
             next.callState = "critical";
 
-            // Add veto to transcript
             next.transcript = [
               ...prev.transcript,
               {
@@ -288,18 +320,35 @@ export function useCallProtection() {
                 verdict: "biological_veto",
               },
             ].slice(-20);
+          } else if (biologicalVeto && !overrideActive) {
+            // First veto hit — show as warning only, do NOT yet raise critical
+            next.audio = {
+              status: "warning",
+              confidence,
+              verdict: "Possible synthetic — confirming…",
+            };
           } else {
             next.audio = {
-              status: isSynthetic ? "danger" : (data.status_text === "Partially Consistent" ? "warning" : "safe"),
+              status: syntheticConfirmed
+                ? "danger"
+                : data.status_text === "Partially Consistent"
+                  ? "warning"
+                  : isSynthetic && !overrideActive
+                    ? "warning"   // first hit: warn, don't alarm
+                    : "safe",
               confidence,
-              verdict: data.status_text === "Partially Consistent" 
-                ? "Partially Consistent"
-                : (isSynthetic
-                  ? `Synthetic Voice (${confidence.toFixed(1)}%)`
-                  : `Verified (${confidence.toFixed(1)}%)`),
+              verdict: overrideActive
+                ? `Verified by user (${confidence.toFixed(1)}%)`
+                : data.status_text === "Partially Consistent"
+                  ? "Partially Consistent"
+                  : syntheticConfirmed
+                    ? `Synthetic Voice (${confidence.toFixed(1)}%)`
+                    : isSynthetic
+                      ? `Suspected — confirming (${confidence.toFixed(1)}%)`
+                      : `Verified (${confidence.toFixed(1)}%)`,
             };
 
-            if (isSynthetic && confidence > 60) {
+            if (syntheticConfirmed) {
               next.callState = "danger";
             }
           }
@@ -527,6 +576,11 @@ export function useCallProtection() {
 
     // Clean up any previous session before starting fresh
     cleanup();
+
+    // Reset anti-false-positive streak counters and override
+    syntheticStreakRef.current = 0;
+    vetoStreakRef.current = 0;
+    authenticUntilRef.current = 0;
 
     setState((prev) => ({ ...prev, error: null, callSummary: null, biologicalVeto: false, vetoReason: null }));
 
@@ -860,6 +914,25 @@ export function useCallProtection() {
     setState((prev) => ({ ...prev, alertLevel: "safe", alertMessage: null, callState: "safe" }));
   }, []);
 
+  // Manual "Mark as Authentic" — operator confirms the speaker is a real
+  // human. Suppress synthetic/veto flagging for 60 seconds to ride out
+  // any false-positive spell from the current network/codec conditions.
+  const markAsAuthentic = useCallback(() => {
+    authenticUntilRef.current = Date.now() + 60_000;
+    syntheticStreakRef.current = 0;
+    vetoStreakRef.current = 0;
+    setState((prev) => ({
+      ...prev,
+      callState: "safe",
+      alertLevel: "safe",
+      alertMessage: null,
+      threatEscalation: 0,
+      biologicalVeto: false,
+      vetoReason: null,
+      audio: { status: "safe", confidence: prev.audio.confidence, verdict: "Verified by user" },
+    }));
+  }, []);
+
   return {
     ...state,
     startProtection,
@@ -868,6 +941,7 @@ export function useCallProtection() {
     analyzeText,
     dismissDanger,
     dismissAlert,
+    markAsAuthentic,
     systemStreamRef,
   };
 }

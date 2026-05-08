@@ -712,12 +712,23 @@ async def websocket_endpoint(websocket: WebSocket):
                         details = audio_result.get("details", {})
 
                         # ── Decision Safety Layer (Live WebSocket) ──
+                        # IMPORTANT: live calls run over phone codecs that warp the
+                        # signal-processing layers. Be very conservative about
+                        # promoting "warn"-grade anomalies to a spoof verdict.
                         anomalies = [c for c in audio_result.get("forensic_checks", []) if c.get("status") in ("fail", "warn")]
                         anomaly_count = len([c for c in anomalies if c.get("status") == "fail"])
 
-                        if details.get("biological_veto") or anomaly_count >= 2:
+                        # Only promote to spoof when:
+                        #  (a) the ensemble's biological-veto fired (already gated by
+                        #      0.95+ biomarker AND neural agreement), OR
+                        #  (b) THREE OR MORE forensic layers fail AND audio confidence
+                        #      is itself high (>=70). A single noisy 5-second chunk
+                        #      with two soft fails is no longer enough.
+                        if details.get("biological_veto"):
                             verdict = "spoof"
-                        elif audio_conf < 60:
+                        elif anomaly_count >= 3 and audio_conf >= 70:
+                            verdict = "spoof"
+                        elif audio_conf < 50:
                             verdict = "uncertain"
 
                         is_spoof = verdict == "spoof"

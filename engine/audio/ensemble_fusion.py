@@ -70,11 +70,12 @@ DEFAULT_WEIGHTS = {
     "room_acoustics": 0.04,       # Room impulse response consistency
 }
 
-# Verdict thresholds — tuned for detection of modern TTS.
-# Lowered spoof threshold from 0.55 because modern TTS can fool some layers,
-# making the overall score lower. When neural detectors say "spoof" at 0.50+
-# and corroborating evidence exists, 0.50 is enough.
-SPOOF_THRESHOLD = 0.50
+# Verdict thresholds — calibrated for real-world phone audio (Opus/AMR codec,
+# narrowband, codec jitter). Phone calls compress the high-frequency content
+# the breathing/prosodic detectors rely on, which inflates false-positive
+# rates on real human voices. We err on the side of "do not flag a real
+# person as synthetic" because that's the demo-killer failure mode.
+SPOOF_THRESHOLD = 0.65
 BONAFIDE_THRESHOLD = 0.32
 UNCERTAINTY_THRESHOLD = 0.70  # Raised: allow more disagreement before blocking
 
@@ -587,42 +588,45 @@ class EnsembleFusion:
         - TTS Artifact Veto: When TTS artifacts are strong and neural agrees,
           immediate spoof verdict.
         """
-        # Biological Veto System: Only triggers when signal processing AND
-        # the primary neural model agree.
+        # Biological Veto System: requires very strong signals from BOTH a
+        # signal-processing analyzer AND the primary neural model.
+        # Thresholds raised because phone-codec compression routinely warps
+        # breathing/prosodic/temporal features for real human callers.
         if valid:
             ast_score = valid.get("ast", {}).get("score", 0.5)
-            neural_agrees = ast_score > 0.5
+            neural_agrees = ast_score > 0.65  # was 0.5 — require stronger neural agreement
 
             if neural_agrees:
-                # Veto requires high threshold (0.90+) AND neural agreement
-                if "breathing" in valid and valid["breathing"]["score"] > 0.90:
+                # Veto now requires near-certain biomarker (0.95+) plus strong neural agreement
+                if "breathing" in valid and valid["breathing"]["score"] > 0.95:
                     return "spoof", "Breathing pattern anomaly confirmed by neural model"
-                if "prosodic" in valid and valid["prosodic"]["score"] > 0.90:
+                if "prosodic" in valid and valid["prosodic"]["score"] > 0.95:
                     return "spoof", "Vocal cord anomaly confirmed by neural model"
-                if "temporal" in valid and valid["temporal"]["score"] > 0.90:
+                if "temporal" in valid and valid["temporal"]["score"] > 0.95:
                     return "spoof", "Temporal consistency anomaly confirmed by neural model"
 
                 # TTS Artifact Veto: neural + TTS artifacts both detect spoof
                 tts_score = valid.get("tts_artifacts", {}).get("score", 0.0)
-                if tts_score > 0.65 and ast_score > 0.55:
+                if tts_score > 0.78 and ast_score > 0.70:
                     return "spoof", "TTS artifacts detected and confirmed by neural model"
 
-            # Strong neural + SSL agreement override
+            # Strong neural + SSL agreement override — tightened for phone audio
             ssl_score = valid.get("ssl", {}).get("score", 0.5)
-            if ast_score > 0.65 and ssl_score > 0.55:
+            if ast_score > 0.78 and ssl_score > 0.70:
                 return "spoof", "Neural (AST) and SSL backbone agree on synthetic voice"
 
-        # Very high probability overrides uncertainty entirely
-        if probability > 0.75:
+        # Very high probability overrides uncertainty entirely (raised to avoid
+        # false positives on compressed real-call audio)
+        if probability > 0.88:
             return "spoof", None
 
-        # Neural override: when AST is confident (>0.6), use lower threshold
+        # Neural override: when AST is very confident (>0.75), nudge threshold slightly
         effective_threshold = SPOOF_THRESHOLD
         if valid:
             ast_score = valid.get("ast", {}).get("score", 0.5)
-            if ast_score > 0.6:
-                # Lower threshold when neural detector is confident
-                effective_threshold = SPOOF_THRESHOLD - 0.05
+            if ast_score > 0.75:
+                # Small nudge only when neural detector is highly confident
+                effective_threshold = SPOOF_THRESHOLD - 0.02
                 logger.info(
                     "Neural override: AST=%.3f, lowering spoof threshold to %.3f",
                     ast_score, effective_threshold,

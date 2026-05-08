@@ -396,6 +396,14 @@ const CallProtection = () => {
                 </button>
               )}
               <button
+                onClick={() => { cp.markAsAuthentic(); toast.success("Marked as authentic — alerts paused for 60 s"); }}
+                className="flex-1 min-w-[140px] sm:min-w-[200px] h-14 sm:h-16 bg-surface-container-highest border border-secondary/30 hover:bg-secondary/10 hover:border-secondary/50 transition-all duration-300 rounded-2xl flex items-center justify-center gap-3 font-bold shadow-lg cursor-pointer"
+                title="Confirm the speaker is a real human and silence false alerts for 60 s"
+              >
+                <MaterialIcon icon="verified_user" className="text-secondary" size={20} />
+                <span className="text-on-surface">Mark Authentic</span>
+              </button>
+              <button
                 onClick={() => setExplainMode(!explainMode)}
                 className={`flex-1 min-w-[140px] sm:min-w-[200px] h-14 sm:h-16 border transition-all duration-300 rounded-2xl flex items-center justify-center gap-3 font-bold shadow-lg cursor-pointer ${
                   explainMode 
@@ -562,9 +570,19 @@ const CallProtection = () => {
                         {cp.vetoReason || "Voice exhibits physiological impossibilities inconsistent with human biology. AI voice cloning confirmed."}
                       </p>
                     </div>
-                    <button onClick={() => cp.dismissDanger()} className="text-error/60 hover:text-error transition-colors shrink-0">
-                      <MaterialIcon icon="close" size={20} />
-                    </button>
+                    <div className="flex flex-col sm:flex-row gap-2 shrink-0">
+                      <button
+                        onClick={() => cp.markAsAuthentic()}
+                        className="px-4 py-2 rounded-xl bg-secondary/20 hover:bg-secondary/30 border border-secondary/40 text-secondary font-headline font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer flex items-center gap-2"
+                        title="Confirm this is a real human and silence alerts for 60s"
+                      >
+                        <MaterialIcon icon="verified_user" size={16} />
+                        Mark Authentic
+                      </button>
+                      <button onClick={() => cp.dismissDanger()} className="text-error/60 hover:text-error transition-colors p-2">
+                        <MaterialIcon icon="close" size={20} />
+                      </button>
+                    </div>
                   </div>
                 </motion.div>
               )}
