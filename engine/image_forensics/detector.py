@@ -1109,40 +1109,63 @@ class ImageForensicsDetector:
                 "compression_severity", "moderate"
             ) if isinstance(scores.get("compression"), dict) else "moderate"
 
-        # ── GATE 0: Strong-Platform Prior Override ──
-        # When the compression detector is highly confident (>= 0.9) that the
-        # image came from a social-media platform AND statistical reliability
-        # is very low, the pixel-level neural detectors are operating on
-        # codec noise rather than synthesis artifacts and routinely false-
-        # positive on real photos (WhatsApp selfies, Instagram posts, etc.).
-        # In this regime, trust the prior: the overwhelming majority of
-        # such images are real. Override to authentic UNLESS positive AI
-        # metadata is present.
+        # ── GATE 0: Social-Media / Low-Reliability Prior Override ──
+        # When pixel-level detectors are operating on heavily compressed,
+        # codec-noised input, they routinely false-positive on real phone
+        # photos. In this regime we trust the prior — the overwhelming
+        # majority of social-media / low-reliability uploads are real —
+        # rather than the unreliable model output.
+        #
+        # Trigger when ANY of these is true (and no positive AI metadata):
+        #   (a) social-media fingerprint detected with reasonable confidence (>= 0.6), OR
+        #   (b) statistical reliability is very low (< 0.25) regardless of platform, OR
+        #   (c) heavy compression detected and statistical reliability is low (< 0.35)
         comp_info = scores.get("compression") if isinstance(scores.get("compression"), dict) else {}
         platform_conf = comp_info.get("platform_confidence", 0) if comp_info else 0
+        compression_severity_str = comp_info.get("compression_severity", "none") if comp_info else "none"
+
+        social_media_strong = is_social_media and platform_conf >= 0.6
+        very_low_reliability = stat_reliability < 0.25
+        heavy_compression_low_reliability = (
+            compression_severity_str in ("moderate", "heavy") and stat_reliability < 0.35
+        )
+
         if (
-            is_social_media
-            and platform_conf >= 0.9
-            and stat_reliability < 0.30
+            (social_media_strong or very_low_reliability or heavy_compression_low_reliability)
             and meta < 0.8
         ):
-            report["verdict"] = "authentic"
-            report["confidence"] = 65.0
-            report["forensic_checks"].append({
-                "id": "platform_prior_override",
-                "name": "Strong Social-Media Prior",
-                "status": "pass",
-                "description": (
-                    f"Confirmed social-media origin (platform confidence "
-                    f"{platform_conf*100:.0f}%) with very low statistical "
-                    f"reliability ({stat_reliability:.2f}). Pixel-level "
-                    f"detectors are unreliable on this compression profile, "
-                    f"so the verdict defers to the strong prior that "
-                    f"social-media uploads are overwhelmingly real photos. "
-                    f"Manual review recommended if context is suspicious."
-                ),
-            })
-            return
+            # Last-resort safeguard: if the neural model is screaming AI at
+            # >= 0.95 AND CLIP also agrees at >= 0.9, override the prior
+            # because two independent strong signals do still mean something
+            # even on compressed input. Otherwise, defer to prior.
+            neural_score = scores.get("neural_effective", scores.get("neural", 0.0))
+            clip_score = scores.get("clip", 0.0) or 0.0
+            both_models_extreme = neural_score >= 0.95 and clip_score >= 0.90
+
+            if not both_models_extreme:
+                trigger = (
+                    "social-media origin"
+                    if social_media_strong
+                    else "very low statistical reliability"
+                    if very_low_reliability
+                    else "heavy compression with low reliability"
+                )
+                report["verdict"] = "authentic"
+                report["confidence"] = 65.0
+                report["forensic_checks"].append({
+                    "id": "platform_prior_override",
+                    "name": "Compression-Aware Prior Override",
+                    "status": "pass",
+                    "description": (
+                        f"Detected {trigger} (platform={comp_info.get('platform_hint') or 'n/a'}, "
+                        f"platform_conf={platform_conf:.2f}, stat_reliability={stat_reliability:.2f}). "
+                        f"Pixel-level detectors are unreliable in this regime, so the "
+                        f"verdict defers to the strong prior that such uploads are "
+                        f"overwhelmingly real photos. Manual review recommended if "
+                        f"context is suspicious."
+                    ),
+                })
+                return
 
         # ── GATE 1: Metadata Override ──
         # Only fires when an AI signature is *positively* identified in EXIF/C2PA.
