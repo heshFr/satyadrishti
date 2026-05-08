@@ -241,6 +241,24 @@ const CallProtection = () => {
     <Layout systemStatus={systemStatus}>
       <div className="pb-12 px-8 max-w-[1600px] mx-auto space-y-8">
 
+        {/* ── Persistent error banner (visible in idle + active) ── */}
+        <AnimatePresence>
+          {cp.error && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="bg-error-container/20 border border-error/30 rounded-xl p-4 flex items-center gap-3"
+            >
+              <MaterialIcon icon="error" className="text-error" size={20} />
+              <p className="text-sm text-error flex-1">{cp.error}</p>
+              <button onClick={() => cp.dismissAlert()} className="text-error hover:text-on-surface">
+                <MaterialIcon icon="close" size={18} />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* ── IDLE STATE: Centered hero + glowing CTA ── */}
         {!isActive && (
           <motion.div

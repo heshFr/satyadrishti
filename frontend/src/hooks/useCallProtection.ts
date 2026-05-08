@@ -547,38 +547,50 @@ export function useCallProtection() {
       }
 
       // ── Step 2: Capture system audio via screen share ──
-      // Required to listen to the other caller's voice. If the user
-      // cancels this dialog the entire flow aborts cleanly.
-      let systemStream: MediaStream;
+      // Required on desktop to listen to the other caller's voice.
+      // Mobile browsers don't support getDisplayMedia — we fall back
+      // to mic-only protection automatically.
+      let systemStream: MediaStream | undefined;
       let hasSystemAudio = false;
       let hasScreenVideo = false;
 
-      try {
-        systemStream = await navigator.mediaDevices.getDisplayMedia({
-          audio: true,
-          video: true,
-        });
-        systemStreamRef.current = systemStream;
+      const supportsDisplayMedia =
+        typeof navigator !== "undefined" &&
+        !!navigator.mediaDevices &&
+        typeof navigator.mediaDevices.getDisplayMedia === "function";
+      const isMobile =
+        typeof navigator !== "undefined" &&
+        /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-        const audioTracks = systemStream.getAudioTracks();
-        hasSystemAudio = audioTracks.length > 0;
+      if (supportsDisplayMedia && !isMobile) {
+        try {
+          systemStream = await navigator.mediaDevices.getDisplayMedia({
+            audio: true,
+            video: true,
+          });
+          systemStreamRef.current = systemStream;
 
-        const videoTracks = systemStream.getVideoTracks();
-        hasScreenVideo = videoTracks.length > 0;
-        if (hasScreenVideo) {
-          screenVideoRef.current = videoTracks[0];
-          videoTracks[0].onended = () => {
-            setState((prev) => ({ ...prev, isScreenShare: false }));
-            screenVideoRef.current = null;
-          };
+          const audioTracks = systemStream.getAudioTracks();
+          hasSystemAudio = audioTracks.length > 0;
+
+          const videoTracks = systemStream.getVideoTracks();
+          hasScreenVideo = videoTracks.length > 0;
+          if (hasScreenVideo) {
+            screenVideoRef.current = videoTracks[0];
+            videoTracks[0].onended = () => {
+              setState((prev) => ({ ...prev, isScreenShare: false }));
+              screenVideoRef.current = null;
+            };
+          }
+        } catch {
+          // User cancelled screen share on desktop — abort: stop mic and do NOT start protection
+          micStream.getTracks().forEach((t) => t.stop());
+          micStreamRef.current = null;
+          startingRef.current = false;
+          return;
         }
-      } catch {
-        // User cancelled screen share — abort: stop mic and do NOT start protection
-        micStream.getTracks().forEach((t) => t.stop());
-        micStreamRef.current = null;
-        startingRef.current = false;
-        return;
       }
+      // On mobile (or browsers without getDisplayMedia) we proceed with mic-only protection.
 
       // ── Step 3: Set up audio processing ──
       const sampleRate = 16000;
